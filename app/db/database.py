@@ -3,11 +3,12 @@ import sqlite3
 class Database:
     def __init__(self, db_name = "wallet_app.db"):
         self.db_name = db_name
+        self.create_users_table()
     
     def connect(self):
         return sqlite3.connect(self.db_name)
     
-    #Δημιουργούμε πίνακα users (αν δεν υπάρχει) με unique username
+    #Δημιουργία πίνακα users (αν δεν υπάρχει) με unique username
     def create_users_table(self):
         conn = self.connect()
         cursor = conn.cursor()

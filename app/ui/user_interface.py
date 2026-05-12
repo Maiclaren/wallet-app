@@ -1,13 +1,14 @@
 from tkinter import *
 from tkinter import ttk
+from app.db.database import Database
 
 class Application():
     def __init__(self):
         self.root = Tk()
         self.root.title("Wallet App")
-        
         self.current_frame = None
-    
+        self.db = Database()
+
     def show_frame(self, frame_class):
         if self.current_frame is not None:
             self.current_frame.destroy()
@@ -56,27 +57,45 @@ class SignUpFrame(Frame):
         label_username = Label(self, text= "Username")
         label_username.grid(row=0, column=0, padx=5, pady=10)
 
-        entry_username = Entry(self)
-        entry_username.grid(row=0, column=1, padx=5, pady=10)
+        #Κάνουμε τα entry (usernmae & password) attributes για να μπορέσουμε να πάρουμε με .get() τα values
+        self.entry_username = Entry(self)
+        self.entry_username.grid(row=0, column=1, padx=5, pady=10)
 
         label_password = Label(self, text= "Password")
         label_password.grid(row=1, column=0, padx=5, pady=5)
         
-        entry_password = Entry(self)
-        entry_password.grid(row=1, column=1, padx=5, pady=5)
+        self.entry_password = Entry(self)
+        self.entry_password.grid(row=1, column=1, padx=5, pady=5)
 
         label_password_requirements = Label(self, text= "Use at least 2 characters (one Letter & one Number)")
         label_password_requirements.grid(row=2, column=1,padx=5, pady=2)
 
+        self.label_status = Label(self, text="", fg='red')
+        self.label_status.grid(row=4, column=0, columnspan=2, pady=5)
+
         control_signup_buttons_frame = Frame(self)
         control_signup_buttons_frame.grid(row=2, column=2, padx=5, pady=5)
 
-        button_save = Button(control_signup_buttons_frame, text="Create account")
+        button_save = Button(control_signup_buttons_frame, text="Create account", command = self.create_account)
         button_save.pack(side="left", padx=5)
 
         button_back = Button(control_signup_buttons_frame, text="Back", command = lambda: self.app.show_frame(WelcomeFrame))
         button_back.pack(side="left", padx=5)
+     
+    def create_account(self):
+        username = self.entry_username.get().strip()
+        password = self.entry_password.get().strip()
 
+        if username == "" or password == "":
+            self.label_status.config(text="Please fill in both fields.", fg='red')
+            return
+
+        success = self.app.db.create_user(username,password)
+        if success: #Γιατί επιστρέφει bool με IntegrityError αν σκάσει στο unique username ή κάτι άλλο
+            self.label_status.config(text="Account created successfully!", fg='green')
+            self.app.show_frame(SignInFrame)
+        else:
+            self.label_status.config(text="Username already exists. Try another one.", fg='red')
 
 class SignInFrame(Frame):
     def __init__(self,parent,app):
@@ -167,8 +186,6 @@ class NewEntry(Frame):
             r2.pack(side=LEFT)
             r3 = Radiobutton(rec_period_choice_frame,text="Monthly",value=3,variable=basis)
             r3.pack(side=LEFT)
-
-
 
 
 new_app = Application()
