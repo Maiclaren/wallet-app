@@ -102,26 +102,44 @@ class SignInFrame(Frame):
         super().__init__(parent)
         self.app = app
 
+        self.label_signin_status = Label(self, text="", fg = 'red')
+        self.label_signin_status.grid(row = 4, column=0, columnspan = 2, pady=5)
+
         label_username = Label(self, text= "Username")
         label_username.grid(row=0, column=0, padx=5, pady=10)
 
-        entry_username = Entry(self)
-        entry_username.grid(row=0, column=1, padx=5, pady=10)
+        self.entry_username = Entry(self)
+        self.entry_username.grid(row=0, column=1, padx=5, pady=10)
 
         label_password = Label(self, text= "Password")
         label_password.grid(row=1, column=0, padx=5, pady=5)
         
-        entry_password = Entry(self, show='*')
-        entry_password.grid(row=1, column=1, padx=5, pady=5)    
+        self.entry_password = Entry(self, show='*')
+        self.entry_password.grid(row=1, column=1, padx=5, pady=5)    
 
         control_signin_buttons_frame = Frame(self)
-        control_signin_buttons_frame.grid(row=2, column=2, padx=5, pady=5)
+        control_signin_buttons_frame.grid(row=2, column=0, columnspan=2, pady=10)
 
-        button_save = Button(control_signin_buttons_frame, text="Sign in", command=lambda: self.app.show_frame(MainPage))
-        button_save.pack(side="left", padx=5)
+        button_signin = Button(control_signin_buttons_frame, text="Sign in", command=self.check_account)
+        button_signin.pack(side="left", padx=5)
 
         button_back = Button(control_signin_buttons_frame, text="Back", command = lambda: self.app.show_frame(WelcomeFrame))
-        button_back.pack(side="left", padx=5)   
+        button_back.pack(side="left", padx=5)
+
+    def check_account(self):
+        username = self.entry_username.get().strip()
+        password = self.entry_password.get().strip()
+
+        if username == "" or password == "":
+            self.label_signin_status.config(text="Please fill in both fields.", fg='red')
+            return
+        
+        account_status = self.app.db.validate_user(username,password)
+        if account_status:
+            self.app.show_frame(MainPage)
+        else:
+            self.label_signin_status.config(text="Invalid username or password. Please try again.", fg='red')
+
 
 
 class MainPage(Frame):
