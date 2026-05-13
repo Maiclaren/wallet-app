@@ -3,10 +3,52 @@ import sqlite3
 class Database:
     def __init__(self, db_name = "wallet_app.db"):
         self.db_name = db_name
+        self.create_users_table()
+        self.create_exchanges_table()
+        self.create_tasks_table()
     
     def connect(self):
         return sqlite3.connect(self.db_name)
+
+    def create_exchanges_table(self):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS exchanges (
+                id INTEGER PRIMARY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                exchange_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                date TEXT NOT NULL,
+                category TEXT NOT NULL,
+                description TEXT,
+                is_recurring INTEGER NOT NULL DEFAULT 0,
+                recurring_period TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
+        """)
+        conn.commit()
+        conn.close()
     
+    def create_tasks_table(self):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                task_type TEXT NOT NULL,
+                name TEXT NOT NULL,
+                amount REAL NOT NULL,
+                date TEXT NOT NULL,
+                status TEXT NOT NULL,
+                link TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
+        """)
+        conn.commit()
+        conn.close()
+        
     #Δημιουργούμε πίνακα users (αν δεν υπάρχει) με unique username
     def create_users_table(self):
         conn = self.connect()
