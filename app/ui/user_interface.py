@@ -124,7 +124,7 @@ class SignInFrame(Frame):
         self.entry_password.grid(row=2, column=1, padx=5, pady=5)    
 
         control_signin_buttons_frame = Frame(self)
-        control_signin_buttons_frame.grid(row=3, column=0, columnspan=2, pady=10)
+        control_signin_buttons_frame.grid(row=3, column=3, columnspan=2, pady=10)
 
         button_signin = Button(control_signin_buttons_frame, text="Sign in", command=self.check_account)
         button_signin.pack(side="left",padx=5)
