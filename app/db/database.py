@@ -10,6 +10,7 @@ class Database:
     def connect(self):
         return sqlite3.connect(self.db_name)
 
+    #Δημιουργούμε πίνακα exchanges (αν δεν υπάρχει) που στεγάζει τα revenues & expenses
     def create_exchanges_table(self):
         conn = self.connect()
         cursor = conn.cursor()
@@ -29,7 +30,25 @@ class Database:
         """)
         conn.commit()
         conn.close()
-    
+
+    #Δημιουργία συνάρτησης για την καταχώρηση εγγραφών σε exchanges
+    def create_exchange(self, user_id, exchange_type, amount, date, category, description, is_recurring, recurring_period):
+        conn = self.connect()
+        cursor = conn.cursor()
+        #try-finally ώστε να σκάσει αναίμακτα
+        try:
+            cursor.execute("""
+                INSERT INTO exchanges (
+                    user_id, exchange_type, amount, date, category, 
+                    description, is_recurring, recurring_period         
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);  
+            """, (user_id, exchange_type, amount, date, category, description, is_recurring, recurring_period))
+            conn.commit()
+        finally:
+            conn.close()
+
+
+    #Δημιουργούμε πίνακα tasks (αν δεν υπάρχει) που στεγάζει τα obligations & wishlist
     def create_tasks_table(self):
         conn = self.connect()
         cursor = conn.cursor()
@@ -48,7 +67,22 @@ class Database:
         """)
         conn.commit()
         conn.close()
-        
+    
+    #Δημιουργία συνάρτησης για την καταχώρηση εγγραφών σε tasks
+    def create_task(self, user_id, task_type, name, amount, date, status, link):
+        conn = self.connect()
+        cursor = conn.cursor()
+        #try-finally ώστε να σκάσει αναίμακτα
+        try:
+            cursor.execute("""
+                INSERT INTO tasks (
+                    user_id, task_type, name, amount, date, status, link)
+                VALUES (?, ?, ?, ?, ?, ?, ?);
+            """, (user_id, task_type, name, amount, date, status, link))
+            conn.commit()
+        finally:
+            conn.close()
+
     #Δημιουργούμε πίνακα users (αν δεν υπάρχει) με unique username
     def create_users_table(self):
         conn = self.connect()
@@ -89,4 +123,4 @@ class Database:
         )
         user = cursor.fetchone()
         conn.close()
-        return user is not None
+        return user
