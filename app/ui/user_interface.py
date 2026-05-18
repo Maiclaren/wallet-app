@@ -8,6 +8,8 @@ class Application():
         self.root.title("Wallet App")
         self.current_frame = None
         self.db = Database()
+        self.current_user_id = None
+        self.current_username = None
 
     def show_frame(self, frame_class):
         if self.current_frame is not None:
@@ -142,6 +144,8 @@ class SignInFrame(Frame):
         
         account_status = self.app.db.validate_user(username,password)
         if account_status:
+            self.app.current_user_id = account_status[0]
+            self.app.current_username = account_status[1]
             self.app.show_frame(MainPage)
         else:
             self.label_signin_status.config(text="Invalid username or password. Please try again.", fg='red')
@@ -177,66 +181,53 @@ class NewEntry(Frame):
     def __init__(self,parent,app):
         super().__init__(parent)
         self.app = app
-        
-        label_entry_type = Label(self, text= "Entry type")
+        self.app.root.title("Wallet App - New Entry")
+        self.revenue_categories = ["Salary", "Bonus", "Freelance", "Business", "Gift","Refund", "Investment", "Rental Income", "Other"]
+        self.expense_categories = ["Food", "Utilities", "Fuel", "Transport", "Rent", "Bills", "Shopping", "Health", "Entertainment", "Education", "Travel", "Other"]        self.recurring_var = IntVar()
+        self.date_entry = None
+        self.amount_entry = None
+        self.category_combo= None
+        self.description_entry = None
+        self.entry_type = None
+        self.name_entry = None
+        self.status_combo = None
+        self.link_entry = None
+
+        self.form_frame = Frame(self)
+        self.form_frame.pack(pady=20)
+
+        label_entry_type = Label(self.form_frame, text= "Entry type")
         label_entry_type.grid(row=0, column=0, padx=5, pady=10)
 
-        self.entry_type = ttk.Combobox(self,values=["Revenue", "Expense", "Task", "Wishlist"],
-                                       state="readonly")
-        self.entry_type.grid(row=0,column=1,padx=5,pady=10)
+        self.entry_type = ttk.Combobox(self.form_frame,values=["Revenue", "Expense", "Obligation", "Wishlist"], state="readonly")
+        self.entry_type.grid(row=0,column=0,padx=5,pady=10)
         self.entry_type.bind("<<ComboboxSelected>>", self.handle_entry_type)
-        self.recurring_var = IntVar()
 
-        control_signup_buttons_frame = Frame(self)
-        control_signup_buttons_frame.grid(row=3, column=2, padx=5, pady=5)
-
-        #button_proceed = Button(control_signup_buttons_frame, text="Proceed", command=self.revenue_expense_view)
-        #button_proceed.pack(side="left", padx=5)
-
-        button_cancel = Button(control_signup_buttons_frame, text="Cancel", command = lambda: self.app.show_frame(MainPage))
-        button_cancel.pack(side="left", padx=5)
+        back_button = Button(self,text='Back',command=lambda: self.app.show_frame(MainPage))
+        back_button.pack(pady=5)
+        #Για να επιστρέφω την κατάσταση μετά το press save button
+        self.status_label = Label(self,text="",fg='red')
+        self.status_label.pack(pady=10)
 
     def handle_entry_type(self, event):
         selected_type = self.entry_type.get()
 
         if selected_type == "Revenue" or selected_type == "Expense":
-            self.revenue_expense_view()
+            self.revenue_expense_view(selected_type)
 
     def revenue_expense_view(self):
         
-            date_label = Label(self, text="Date (dd/mm/yyyy)")
-            date_label.grid(row=1,column=0,padx=5,pady=10)
+        date_label = Label(self, text="Date (dd/mm/yyyy)")
+        date_label.grid(row=1,column=0,padx=5,pady=10)
 
-            date_entry = Entry(self)
-            date_entry.grid(row=1,column=1,padx=5,pady=10)
+        self.date_entry = Entry(self)
+        self.date_entry.grid(row=1,column=1,padx=5,pady=10)
 
-            value_label = Label(self, text="Amount")
-            value_label.grid(row=2,column=0,padx=5,pady=10)
+        value_label = Label(self, text="Amount")
+        value_label.grid(row=2,column=0,padx=5,pady=10)
 
-            value_entry = Entry(self)
-            value_entry.grid(row=2,column=1,padx=5,pady=10)
-            
-            make_recurring_chkbox = Checkbutton(self,text='Make Recurring', variable=self.recurring_var,command=self.handle_recurring)
-            make_recurring_chkbox.grid(row=3,column=1,padx=5,pady=5)
-    
-    def handle_recurring(self):
-        if self.recurring_var.get() == 1:
-            self.make_recurring_view()
-
-    def make_recurring_view(self):
-            rec_period_label = Label(self, text="Recurring period")
-            rec_period_label.grid(row=4,column=0,padx=5,pady=10)
-
-            rec_period_choice_frame = Frame(self)
-            rec_period_choice_frame.grid(row=4,column=2, padx=5, pady=10)
-
-            basis = IntVar()
-            r1 = Radiobutton(rec_period_choice_frame,text="Daily",value=1,variable=basis)
-            r1.pack(side=LEFT)
-            r2 = Radiobutton(rec_period_choice_frame,text="Weekly",value=2,variable=basis)
-            r2.pack(side=LEFT)
-            r3 = Radiobutton(rec_period_choice_frame,text="Monthly",value=3,variable=basis)
-            r3.pack(side=LEFT)
+        self.amount_entry = Entry(self)
+        self.amount_entry.grid(row=2,column=1,padx=5,pady=10)
 
 
 new_app = Application()
