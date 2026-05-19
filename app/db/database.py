@@ -21,8 +21,6 @@ class Database:
                 date TEXT NOT NULL,
                 category TEXT NOT NULL,
                 description TEXT,
-                is_recurring INTEGER NOT NULL DEFAULT 0,
-                recurring_period TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
         """)
@@ -30,7 +28,7 @@ class Database:
         conn.close()
 
     #Δημιουργία συνάρτησης για την καταχώρηση εγγραφών σε exchanges
-    def create_exchange(self, user_id, exchange_type, amount, date, category, description, is_recurring, recurring_period):
+    def create_exchange(self, user_id, exchange_type, amount, date, category, description):
         conn = self.connect()
         cursor = conn.cursor()
         #try-finally ώστε να σκάσει αναίμακτα
@@ -38,9 +36,9 @@ class Database:
             cursor.execute("""
                 INSERT INTO exchanges (
                     user_id, exchange_type, amount, date, category, 
-                    description, is_recurring, recurring_period         
+                    description     
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);  
-            """, (user_id, exchange_type, amount, date, category, description, is_recurring, recurring_period))
+            """, (user_id, exchange_type, amount, date, category, description))
             conn.commit()
         finally:
             conn.close()
