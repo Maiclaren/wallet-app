@@ -337,9 +337,7 @@ class NewEntry(Frame):
                 amount,
                 date,
                 category,
-                description,
-                0,
-                None                
+                description,             
             )
             self.status_label.config(text=f"{selected_type} saved successfully.",fg='green')
         except Exception as e:
