@@ -16,7 +16,7 @@ class Database:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS exchanges (
-                id INTEGER PRIMARY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 exchange_type TEXT NOT NULL,
                 amount REAL NOT NULL,
@@ -52,7 +52,7 @@ class Database:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 task_type TEXT NOT NULL,
                 name TEXT NOT NULL,
