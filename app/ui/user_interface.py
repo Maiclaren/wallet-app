@@ -150,8 +150,6 @@ class SignInFrame(Frame):
         else:
             self.label_signin_status.config(text="Invalid username or password. Please try again.", fg='red')
 
-
-
 class MainPage(Frame):
     def __init__(self,parent,app):
         super().__init__(parent)
@@ -183,7 +181,8 @@ class NewEntry(Frame):
         self.app = app
         self.app.root.title("Wallet App - New Entry")
         self.revenue_categories = ["Salary", "Bonus", "Freelance", "Business", "Gift","Refund", "Investment", "Rental Income", "Other"]
-        self.expense_categories = ["Food", "Utilities", "Fuel", "Transport", "Rent", "Bills", "Shopping", "Health", "Entertainment", "Education", "Travel", "Other"]        self.recurring_var = IntVar()
+        self.expense_categories = ["Food", "Utilities", "Fuel", "Transport", "Rent", "Bills", "Shopping", "Health", "Entertainment",
+                                    "Education", "Travel", "Other"]        
         self.date_entry = None
         self.amount_entry = None
         self.category_combo= None
@@ -209,25 +208,171 @@ class NewEntry(Frame):
         self.status_label = Label(self,text="",fg='red')
         self.status_label.pack(pady=10)
 
+    #Εξηγώ: Ανάλογα το entry type (Exchange ή Task) θα αλλάζει η φόρμα. Με αυτόν τον handler θα ορίζω ποιο builder form (exchange or task) θα παίζει μπάλα. 
     def handle_entry_type(self, event):
         selected_type = self.entry_type.get()
+        self.clear_widgets()
+        if selected_type in ["Revenue","Expense"]:
+            self.build_exhange_form(selected_type) #το στήνω πιο κάτω
+        elif selected_type in ["Obligation","Wishlist"]:
+            self.build_exchange_form(selected_type) #το στήνω πιο κάτω
 
-        if selected_type == "Revenue" or selected_type == "Expense":
-            self.revenue_expense_view(selected_type)
+    #def για να διαγράφω τα πεδία των widgets κάτω από το entry_type (γι αυτό και βάζω ow_in_grid.grid_info()["row"]>0 εφόσον το combobox και το label 
+    #του είναι στο row: 0)
+    def clear_widgets(self):
+        for row_in_grid in self.form_frame.grid_slaves(): #παίρνω τα παιδιά του grid
+            if int(row_in_grid.grid_info()["row"]>0): #και από αυτά από το row:1 και κάτω
+                row_in_grid.destroy()
+        self.date_entry = None
+        self.amount_entry = None
+        self.category_combo= None
+        self.description_entry = None
+        self.name_entry = None
+        self.status_combo = None
+        self.link_entry = None
+        self.status_label.config(text="",fg='red')
 
-    def revenue_expense_view(self):
+    def build_exhange_form(self,selected_type):
         
-        date_label = Label(self, text="Date (dd/mm/yyyy)")
+        date_label = Label(self.form_frame, text="Date (dd/mm/yyyy)")
         date_label.grid(row=1,column=0,padx=5,pady=10)
 
-        self.date_entry = Entry(self)
+        self.date_entry = Entry(self.form_frame)
         self.date_entry.grid(row=1,column=1,padx=5,pady=10)
 
-        value_label = Label(self, text="Amount")
-        value_label.grid(row=2,column=0,padx=5,pady=10)
+        amount_label = Label(self.form_frame, text="Amount")
+        amount_label.grid(row=2,column=0,padx=5,pady=10)
 
-        self.amount_entry = Entry(self)
+        self.amount_entry = Entry(self.form_frame)
         self.amount_entry.grid(row=2,column=1,padx=5,pady=10)
+
+        category_label = Label(self.form_frame, text="Category")
+        category_label.grid(row=3,column=0,padx=5,pady=10)
+
+        #categories -> αναλόγως το exhange type:
+        categories = self.revenue_categories if selected_type=="Revenue" else self.expense_categories
+        self.categories_combo = ttk.Combobox(self.form_frame, values=categories, state='readonly')
+        self.categories_combo.grid(row=3,column=1,padx=5,pady=10)
+
+        description_label = Label(self.form_frame,text="Description")
+        description_label.grid(row=4,column=0,padx=5,pady=10)
+
+        self.description_entry = Entry(self.form_frame)
+        self.description_entry.grid(row=4,column=1,padx=5,pady=10)
+
+        save_button = Button(self.form_frame, text='Save', command=self.save_entry)
+        save_button.grid(row=5,column=0,columnspan=2,pady=10)
+
+    def build_task_form(self,selected_type):
+
+        name_label = Label(self.form_frame,text="Description")
+        name_label.grid(row=1,column=0,padx=5,pady=10)
+
+        self.name_entry = Entry(self.form_frame)
+        self.name_entry.grid(row=1,column=1,padx=5,pady=10)
+
+        amount_label = Label(self.form_frame, text="Amount")
+        amount_label.grid(row=2,column=0,padx=5,pady=10)
+
+        self.amount_entry = Entry(self.form_frame)
+        self.amount_entry.grid(row=2,column=1,padx=5,pady=10)
+        
+        date_label = Label(self.form_frame, text="Date (dd/mm/yyyy)")
+        date_label.grid(row=3,column=0,padx=5,pady=10)
+
+        self.date_entry = Entry(self.form_frame)
+        self.date_entry.grid(row=3,column=1,padx=5,pady=10)
+
+        status_label = Label(self.form_frame)
+        status_label.grid(row=4,column=0,padx=5,pady=10)
+        
+        self.status_combo = ttk.Combobox(self.form_frame, values=["Pending","Completed"], state='readonly')
+        self.status_combo.grid(row=3,column=1,padx=5,pady=10)
+
+        save_button = Button(self.form_frame, text='Save', command=self.save_entry)
+        save_button.grid(row=5,column=0,columnspan=2,pady=10)
+
+        #Αν είναι wishlist να εμφανίζει και πεδίο link - στοιχίζω και το save button ανάλογα
+        if selected_type == "Wishlist":
+
+            link_label = Label(self.form_frame, text="Link")
+            link_label.grid(row=5, column=0, padx=5, pady=10)
+
+            self.link_entry = Entry(self.form_frame)
+            self.link_entry.grid(row=5, column=1, padx=5, pady=10)
+            save_row = 6
+        else:
+
+            save_row = 5
+
+        save_button = Button(self.form_frame, text="Save Entry", command=self.save_entry)
+        save_button.grid(row=save_row, column=0, columnspan=2, pady=10)
+    
+    #Ομοίως με τις φόρμες ανά κατηγορία, φτιάχνω saves ανα περίπτωση
+    def save_entry(self):
+        selected_type = self.entry_type.get().strip()
+        if selected_type in ["Revenue","Expense"]:
+            self.save_exchange(selected_type)
+        elif selected_type in ["Obligation","Wishlist"]:
+            self.save_task(selected_type)
+
+    def save_exchange(self,selected_type):
+        date = self.date_entry.get().strip() if self.date_entry else ""
+        amount = self.amount_entry.get().strip() if self.amount_entry else ""
+        category = self.category_combo.get().strip() if self.category_combo else ""
+        description = self.description_entry.get().strip() if self.description_entry else ""
+        #Αν ένα από τα κύρια πεδία δεν είναι συμπληρωμένα -> αμυντικός προγραμματισμός
+        if date == "" or amount == "" or category == "":
+            self.status_label.config(text="Please fill in all required fileds.",fg='red')
+        #Κάνω έναν επί πρόσθετο αμυντικό με casting του amount σε float με try - except
+        try:
+            amount = float(amount)
+        except ValueError:
+            self.status_label.config(text="Please use valid numbers.",fg='red')
+        #Καλώ ΒΔ για δημιουργία εγγραφής - πάλι με αμυντικό για να μη σκάσει:
+        try:
+            self.app.db.create_exchange(
+                self.app.current_user_id, #-> που το έχω από την κλάση SigninFrame στην def: check_account 
+                selected_type.lower(), #ώστε όλα να είναι ίδια
+                amount,
+                date,
+                category,
+                description,
+                0,
+                None                
+            )
+            self.status_label.config(text=f"{selected_type} saved successfully.",fg='green')
+        except Exception as e:
+            self.status_label.config(text=f"Error: {e} trying to save exchange",fg='red')
+    
+    def save_task(self,selected_type):
+        name = self.name_entry.get().strip() if self.name_entry else ""
+        amount = self.amount_entry.get().strip() if self.amount_entry else ""
+        date = self.date_entry.get().strip() if self.date_entry else ""
+        status = self.status_combo.get().strip() if self.status_combo else ""
+        link = self.link_entry.get.strip() if self.link_entry else ""
+        #Αν ένα από τα κύρια πεδία δεν είναι συμπληρωμένα -> αμυντικός προγραμματισμός
+        if date == "" or amount == "" or name == "" or status == "":
+            self.status_label.config(text="Please fill in all required fileds.",fg='red')
+        #Κάνω έναν επί πρόσθετο αμυντικό με casting του amount σε float με try - except
+        try:
+            amount = float(amount)
+        except ValueError:
+            self.status_label.config(text="Please use valid numbers.",fg='red')
+        #Καλώ ΒΔ για δημιουργία εγγραφής - πάλι με αμυντικό για να μη σκάσει:
+        try:
+            self.app.db.create_exchange(
+                self.app.current_user_id, #-> που το έχω από την κλάση SigninFrame στην def: check_account 
+                selected_type.lower(), #ώστε όλα να είναι ίδια
+                name,
+                amount,
+                date,
+                status,
+                link                
+            )
+            self.status_label.config(text=f"{selected_type} saved successfully.",fg='green')
+        except Exception as e:
+            self.status_label.config(text=f"Error: {e} trying to save exchange",fg='red')
 
 
 new_app = Application()
