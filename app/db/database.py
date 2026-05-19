@@ -4,6 +4,8 @@ class Database:
     def __init__(self, db_name = "wallet_app.db"):
         self.db_name = db_name
         self.create_users_table()
+        self.create_exchanges_table()
+        self.create_tasks_table()
 
     def connect(self):
         return sqlite3.connect(self.db_name)
