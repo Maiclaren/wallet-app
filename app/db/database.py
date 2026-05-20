@@ -57,6 +57,26 @@ class Database:
         conn.close()
         return rows
     
+    #Με αυτή θα διαγράφω όλο το record που επιλέγω σε exchange
+    def delete_exchange(self, record_id):
+        conn = self.connect()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM exchanges WHERE id = ?",(record_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    #Με αυτή θα διαγράφω όλο το record που επιλέγω σε task
+    def delete_task(self, record_id):
+        conn = self.connect()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM tasks WHERE id = ?",(record_id,))
+            conn.commit()
+        finally:
+            conn.close()
+            
     #Δημιουργούμε πίνακα tasks (αν δεν υπάρχει) που στεγάζει τα obligations & wishlist
     def create_tasks_table(self):
         conn = self.connect()
