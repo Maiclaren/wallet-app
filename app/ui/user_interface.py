@@ -1,6 +1,9 @@
 from tkinter import *
 from tkinter import ttk
+from tkinter import filedialog
+import pandas as pd
 from app.db.database import Database
+from datetime import datetime
 
 #Η λογική που εφαρμόζουμε είναι ένα παράθυρο του App και μέσα σε αυτό εναλλάσσουμε ξεχωριστά object frames
 class Application():
@@ -23,7 +26,7 @@ class Application():
         menu = Menu(self.root)
         main_menu = Menu(menu, tearoff=0)
         main_menu.add_command(label="New entry",command= lambda: self.show_frame(NewEntry))
-        main_menu.add_command(label="Inspect existing entries")
+        main_menu.add_command(label="Inspect existing entries",command=lambda: self.show_frame(InspectFrame))
         main_menu.add_command(label="Entries statistics")
         main_menu.add_command(label="Quit",command=self.root.destroy)
         menu.add_cascade(label="Menu",menu=main_menu)
@@ -170,7 +173,7 @@ class MainPage(Frame):
         new_entry_button = Button(self, text="New entry", command=lambda: self.app.show_frame(NewEntry))
         new_entry_button.pack(pady=5)
 
-        inspect_button = Button(self, text="Inspect entries")
+        inspect_button = Button(self, text="Inspect entries", command=lambda: self.app.show_frame(InspectFrame))
         inspect_button.pack(pady=5)        
         
         stats_button = Button(self, text="Entries statistics")
@@ -179,6 +182,7 @@ class MainPage(Frame):
         logout_button = Button(self, text="Log out", command=lambda: self.app.show_frame(WelcomeFrame))
         logout_button.pack(pady=20) 
 
+#Δημιουργία νέας εγγραφής
 class NewEntry(Frame):
     def __init__(self,parent,app):
         super().__init__(parent)
@@ -217,9 +221,9 @@ class NewEntry(Frame):
         selected_type = self.entry_type.get()
         self.clear_widgets()
         if selected_type in ["Revenue","Expense"]:
-            self.build_exhange_form(selected_type) #το στήνω πιο κάτω
-        elif selected_type in ["Obligation","Wishlist"]:
             self.build_exchange_form(selected_type) #το στήνω πιο κάτω
+        elif selected_type in ["Obligation","Wishlist"]:
+            self.build_task_form(selected_type) #το στήνω πιο κάτω
 
     #def για να διαγράφω τα πεδία των widgets κάτω από το entry_type (γι αυτό και βάζω ow_in_grid.grid_info()["row"]>0 εφόσον το combobox και το label 
     #του είναι στο row: 0)
@@ -237,7 +241,7 @@ class NewEntry(Frame):
         self.status_label.config(text="",fg='red')
 
     #Με αυτό χτίζω το exchange form
-    def build_exhange_form(self,selected_type):
+    def build_exchange_form(self,selected_type):
         
         date_label = Label(self.form_frame, text="Date (dd/mm/yyyy)")
         date_label.grid(row=1,column=0,padx=5,pady=10)
@@ -289,31 +293,37 @@ class NewEntry(Frame):
         self.date_entry = Entry(self.form_frame)
         self.date_entry.grid(row=3,column=1,padx=5,pady=10)
 
-        status_label = Label(self.form_frame)
+        status_label = Label(self.form_frame, text="Category")
         status_label.grid(row=4,column=0,padx=5,pady=10)
         
         self.status_combo = ttk.Combobox(self.form_frame, values=["Pending","Completed"], state='readonly')
-        self.status_combo.grid(row=3,column=1,padx=5,pady=10)
+        self.status_combo.grid(row=4,column=1,padx=5,pady=10)
 
-        save_button = Button(self.form_frame, text='Save', command=self.save_entry)
-        save_button.grid(row=5,column=0,columnspan=2,pady=10)
+        #save_button = Button(self.form_frame, text='Save', command=self.save_entry)
+        #save_button.grid(row=6,column=0,columnspan=2,pady=10)
 
         #Αν είναι wishlist να εμφανίζει και πεδίο link - στοιχίζω και το save button ανάλογα
         if selected_type == "Wishlist":
-
             link_label = Label(self.form_frame, text="Link")
             link_label.grid(row=5, column=0, padx=5, pady=10)
 
             self.link_entry = Entry(self.form_frame)
             self.link_entry.grid(row=5, column=1, padx=5, pady=10)
-            save_row = 6
+            save_row = 7
         else:
-
-            save_row = 5
+            save_row = 6
 
         save_button = Button(self.form_frame, text="Save Entry", command=self.save_entry)
         save_button.grid(row=save_row, column=0, columnspan=2, pady=10)
-    
+
+    #Διορθώνω το date format για σωστό σορτάρισμα μετά με pandas
+    def fix_date(self, date_text):
+        try:
+            parsed_date = datetime.strptime(date_text, "%d/%m/%Y")
+            return parsed_date.strftime("%Y-%m-%d")
+        except ValueError:
+            return None
+        
     #Ομοίως με τις φόρμες ανά κατηγορία, φτιάχνω saves ανα περίπτωση
     def save_entry(self):
         selected_type = self.entry_type.get().strip()
@@ -325,7 +335,7 @@ class NewEntry(Frame):
     def save_exchange(self,selected_type):
         date = self.date_entry.get().strip() if self.date_entry else ""
         amount = self.amount_entry.get().strip() if self.amount_entry else ""
-        category = self.category_combo.get().strip() if self.category_combo else ""
+        category = self.categories_combo.get().strip() if self.categories_combo else ""
         description = self.description_entry.get().strip() if self.description_entry else ""
         #Αν ένα από τα κύρια πεδία δεν είναι συμπληρωμένα -> αμυντικός προγραμματισμός
         if date == "" or amount == "" or category == "":
@@ -335,13 +345,19 @@ class NewEntry(Frame):
             amount = float(amount)
         except ValueError:
             self.status_label.config(text="Please use valid numbers.",fg='red')
+            return
+        
+        fixed_date = self.fix_date(date)
+        if fixed_date is None:
+            self.status_label.config(text="Date must be in format dd/mm/yyyy.", fg="red")
+            return
         #Καλώ ΒΔ για δημιουργία εγγραφής - πάλι με αμυντικό για να μη σκάσει:
         try:
             self.app.db.create_exchange(
                 self.app.current_user_id, #-> που το έχω από την κλάση SigninFrame στην def: check_account 
                 selected_type.lower(), #ώστε όλα να είναι ίδια
                 amount,
-                date,
+                fixed_date,
                 category,
                 description             
             )
@@ -354,7 +370,7 @@ class NewEntry(Frame):
         amount = self.amount_entry.get().strip() if self.amount_entry else ""
         date = self.date_entry.get().strip() if self.date_entry else ""
         status = self.status_combo.get().strip() if self.status_combo else ""
-        link = self.link_entry.get.strip() if self.link_entry else ""
+        link = self.link_entry.get().strip() if self.link_entry else ""
         #Αν ένα από τα κύρια πεδία δεν είναι συμπληρωμένα -> αμυντικός προγραμματισμός
         if date == "" or amount == "" or name == "" or status == "":
             self.status_label.config(text="Please fill in all required fileds.",fg='red')
@@ -363,21 +379,141 @@ class NewEntry(Frame):
             amount = float(amount)
         except ValueError:
             self.status_label.config(text="Please use valid numbers.",fg='red')
+        fixed_date = self.fix_date(date)
+
+        if fixed_date is None:
+            self.status_label.config(text="Date must be in format dd/mm/yyyy.", fg="red")
+            return
         #Καλώ ΒΔ για δημιουργία εγγραφής - πάλι με αμυντικό για να μη σκάσει:
         try:
-            self.app.db.create_exchange(
+            self.app.db.create_task(
                 self.app.current_user_id, #-> που το έχω από την κλάση SigninFrame στην def: check_account 
                 selected_type.lower(), #ώστε όλα να είναι ίδια
                 name,
                 amount,
-                date,
+                fixed_date,
                 status,
                 link                
             )
             self.status_label.config(text=f"{selected_type} saved successfully.",fg='green')
         except Exception as e:
             self.status_label.config(text=f"Error: {e} trying to save exchange",fg='red')
+            
+#Ανασκόπηση καταχωρημένων εγγραφών με view correlated του user_id που έκανε log in 
+class InspectFrame(Frame):
+    def __init__(self,parent,app):
+        super().__init__(parent)
+        self.app = app
+        self.app.root.title("Wallet App - Inspect Entries")
 
+        #Αρχικόποιώ τα dataframes τα οποία θα χτίσω μετά και θα τα σερβίρω στα export σε xlsx
+        self.df_exchanges = pd.DataFrame()
+        self.df_tasks = pd.DataFrame()
+
+        title_label = Label(self, text="Inspect entries", font=("Arial", 14))
+        title_label.pack(pady=10)
+
+        #Θα φτιάξω δύο ξεχωριστά treeview (1.exchanges 2. tasks) ώστε να μη γεμίσουμε με στήλες άκυρες κατά περίπτωση
+        #Για exchanges:
+        exchanges_label = Label(self, text="Exchanges", font=("Arial", 12))
+        exchanges_label.pack(pady=(10, 5))
+
+        exchange_frame = Frame(self)
+        exchange_frame.pack(fill="x", padx=10)
+
+        exchange_scrollbar = Scrollbar(exchange_frame, orient=VERTICAL)
+        exchange_scrollbar.pack(side=RIGHT, fill=Y)
+
+        self.exchange_tree = ttk.Treeview(
+            exchange_frame,
+            columns=("id", "type", "amount", "date", "category", "description"),
+            show="headings", height=8, yscrollcommand=exchange_scrollbar.set)
+        self.exchange_tree.pack(side=LEFT, fill="x", expand=True)
+        exchange_scrollbar.config(command=self.exchange_tree.yview)
+        self.exchange_tree.heading("id", text="ID")
+        self.exchange_tree.heading("type", text="Type")
+        self.exchange_tree.heading("amount", text="Amount")
+        self.exchange_tree.heading("date", text="Date")
+        self.exchange_tree.heading("category", text="Category")
+        self.exchange_tree.heading("description", text="Description")   
+        #Για tasks:
+        tasks_label = Label(self, text="Tasks", font=("Arial", 12))
+        tasks_label.pack(pady=(15, 5))
+
+        task_frame = Frame(self)
+        task_frame.pack(fill="x", padx=10)
+
+        task_scrollbar = Scrollbar(task_frame, orient=VERTICAL)
+        task_scrollbar.pack(side=RIGHT, fill=Y)
+
+        self.task_tree = ttk.Treeview(
+            task_frame,
+            columns=("id", "type", "name", "amount", "date", "status", "link"),
+            show="headings",height=8, yscrollcommand=task_scrollbar.set)
+        self.task_tree.pack(side=LEFT, fill="x", expand=True)
+
+        task_scrollbar.config(command=self.task_tree.yview)
+
+        self.task_tree.heading("id", text="ID")
+        self.task_tree.heading("type", text="Type")
+        self.task_tree.heading("name", text="Name")
+        self.task_tree.heading("amount", text="Amount")
+        self.task_tree.heading("date", text="Date")
+        self.task_tree.heading("status", text="Status")
+        self.task_tree.heading("link", text="Link")
+
+        buttons_frame = Frame(self)
+        buttons_frame.pack(pady=15)
+
+        #Μια loaf_entries ουσιαστικά είναι απλά τη δίνεις με button - την έβαλα τυπικά
+        refresh_button = Button(buttons_frame, text="Refresh", command=self.load_entries)
+        refresh_button.pack(side=LEFT, padx=5)
+
+        export_button = Button(buttons_frame, text="Export to Excel", command=self.export_to_excel)
+        export_button.pack(side=LEFT, padx=5)
+
+        back_button = Button(buttons_frame, text="Back", command=lambda: self.app.show_frame(MainPage))
+        back_button.pack(side=LEFT, padx=5)
+
+        self.load_entries()
+
+    def load_entries(self):
+        #Αρχικά σβήνω ότι έχει μείνει από προηγούμενο load
+        for data in self.exchange_tree.get_children():
+            self.exchange_tree.delete(data)
+        for data in self.task_tree.get_children():
+            self.task_tree.delete(data)
+
+        #Καλώ ΒΔ να μου επιστρέψει τα rows για το self.user_id
+        exchanges = self.app.db.get_user_exchanges(self.app.current_user_id)
+        tasks = self.app.db.get_user_tasks(self.app.current_user_id)
+
+        exchange_cols = ["id","user_id","exchange_type","amount","date","category","description"]
+        task_cols = ["id", "user_id", "task_type", "name", "amount", "date", "status", "link"]
+        self.df_exchanges = pd.DataFrame(exchanges, columns=exchange_cols)
+        self.df_tasks = pd.DataFrame(tasks, columns=task_cols)
+
+        for row_data in exchanges:
+            record_id, user_id, exchange_type, amount, date, category, description = row_data
+            self.exchange_tree.insert("",END,
+                values=(record_id, exchange_type, amount, date, category, description))
+
+        for row_data in tasks:
+            record_id, user_id, task_type, name, amount, date, status, link = row_data
+            self.task_tree.insert("",END,
+                values=(record_id, task_type, name, amount, date, status, link))
+            
+    def export_to_excel(self):
+        if self.df_exchanges.empty and self.df_tasks.empty:
+            return
+        #το εβαλα xlsx γιατί καμιά φορά αν ανοιγείς xls σου εμφανίζει προειδοποίηση στα 365 για παλιά χχρήση αρχείου
+        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel files", "*.xlsx")])
+        if not file_path:
+            return
+        #Το κάνω με ExcelWriter αντί κατευθείαν με to_excel για να βάλω όλο το worksheet σε διαφορετικά spreadsheets
+        with pd.ExcelWriter(file_path) as writer:
+            self.df_exchanges.to_excel(writer, sheet_name="Exchanges", index=False)
+            self.df_tasks.to_excel(writer, sheet_name="Tasks", index=False)
 
 new_app = Application()
 new_app.run()
