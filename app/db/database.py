@@ -45,7 +45,18 @@ class Database:
         finally:
             conn.close()
 
-
+    #Def για να επιστρέφω τα exchanges ανά user (στο inspect Frame της gui)
+    def get_user_exchanges(self,user_id):
+        conn = self.connect()
+        cursor =conn.cursor()
+        cursor.execute("""
+            SELECT id, user_id, exchange_type, amount, date, category, description
+            FROM exchanges WHERE user_id = ? ORDER BY date DESC
+        """,(user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    
     #Δημιουργούμε πίνακα tasks (αν δεν υπάρχει) που στεγάζει τα obligations & wishlist
     def create_tasks_table(self):
         conn = self.connect()
@@ -80,6 +91,19 @@ class Database:
             conn.commit()
         finally:
             conn.close()
+
+    #Def για να επιστρέφω τα tasks ανά user (στο inspect Frame της gui)
+    def get_user_tasks(self,user_id):
+        conn = self.connect()
+        cursor =conn.cursor()
+        cursor.execute("""
+            SELECT id, user_id, task_type, name, amount, date, status, link
+            FROM tasks WHERE user_id = ? ORDER BY date DESC
+        """,(user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    
 
     #Δημιουργούμε πίνακα users (αν δεν υπάρχει) με unique username
     def create_users_table(self):
