@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import ttk
 from app.db.database import Database
 
+#Η λογική που εφαρμόζουμε είναι ένα παράθυρο του App και μέσα σε αυτό εναλλάσσουμε ξεχωριστά object frames
 class Application():
     def __init__(self):
         self.root = Tk()
@@ -32,7 +33,7 @@ class Application():
         self.show_frame(WelcomeFrame)
         self.root.mainloop()
 
-
+#Το αρχικό Frame μόλις ανοίγει η εφαρμογή
 class WelcomeFrame(Frame):
     def __init__(self, parent, app):
         super().__init__(parent)
@@ -51,7 +52,7 @@ class WelcomeFrame(Frame):
         sign_in_button = Button(access_buttons_frame, text="Sign in", command= lambda: self.app.show_frame(SignInFrame))
         sign_in_button.pack(side="left", padx=5)
 
-
+#Το sign up Frame για δημιουργία account αν δεν υπάρχει (γίνεται store σε ξεχωριστό sqlite3 table με reference στα main tables των exchanges & tasks)
 class SignUpFrame(Frame):
     def __init__(self,parent,app):
         super().__init__(parent)
@@ -103,6 +104,7 @@ class SignUpFrame(Frame):
         else:
             self.label_status.config(text="Username already exists. Try another one.", fg='red')
 
+#Frame για log in (κάνουμε hold το id που συνδέθηκε ώστε το account που εισήλθε να βλέπει - προσθέτει - μετατρέπει μόνο τα δικά του data )
 class SignInFrame(Frame):
     def __init__(self,parent,app):
         super().__init__(parent)
@@ -150,6 +152,8 @@ class SignInFrame(Frame):
         else:
             self.label_signin_status.config(text="Invalid username or password. Please try again.", fg='red')
 
+#Μετά το sign in Frame το MainFrame γίνεται το κεντρικό Frame επιλογής κατεύθυνσης ανά ενέργεια. Η κάθε ενέργεια είναι και αυτή με τη σειρά της
+#ένα object Frame: New Entry κλπ.. 
 class MainPage(Frame):
     def __init__(self,parent,app):
         super().__init__(parent)
@@ -232,6 +236,7 @@ class NewEntry(Frame):
         self.link_entry = None
         self.status_label.config(text="",fg='red')
 
+    #Με αυτό χτίζω το exchange form
     def build_exhange_form(self,selected_type):
         
         date_label = Label(self.form_frame, text="Date (dd/mm/yyyy)")
@@ -263,6 +268,7 @@ class NewEntry(Frame):
         save_button = Button(self.form_frame, text='Save', command=self.save_entry)
         save_button.grid(row=5,column=0,columnspan=2,pady=10)
 
+    #Με αυτό χτίζω το task form
     def build_task_form(self,selected_type):
 
         name_label = Label(self.form_frame,text="Description")
@@ -337,7 +343,7 @@ class NewEntry(Frame):
                 amount,
                 date,
                 category,
-                description,             
+                description             
             )
             self.status_label.config(text=f"{selected_type} saved successfully.",fg='green')
         except Exception as e:
