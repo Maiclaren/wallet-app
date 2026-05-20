@@ -13,11 +13,8 @@ An app for managing your personal e-wallet including transactions, wishlists, ob
 - `app/models/`  
   Domain classes of the application, such as expenses, revenues, obligations, and wishlist items (all our classes).
 
-- `app/services/`  
-  Business logic of the application, such as transaction handling, task management, and statistics (manipulation of our classes).
-
 - `app/ui/`  
-  User interface code, such as forms, windows, and visual components (tkinter).
+  User interface code, such as forms, services, windows, and visual components (tkinter)
 
 - `docs/`  
   Documentation, diagrams, screenshots, and notes related to the project.
