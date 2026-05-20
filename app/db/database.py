@@ -39,7 +39,7 @@ class Database:
                 INSERT INTO exchanges (
                     user_id, exchange_type, amount, date, category, 
                     description     
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);  
+                ) VALUES (?, ?, ?, ?, ?, ?);  
             """, (user_id, exchange_type, amount, date, category, description))
             conn.commit()
         finally:
