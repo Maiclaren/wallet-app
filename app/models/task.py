@@ -1,16 +1,29 @@
+#Δημιουργούμε base class για obligations και wishlist
 class Task:
-    def __init__(self, name, amount, date, status):
+    def __init__(
+        self,
+        user_id,
+        task_type,
+        name,
+        amount,
+        date,
+        status,
+        link=None
+    
+    ):
+
+        self.user_id = user_id
+        self.task_type = task_type
         self.name = name
-        self.amount = amount
+        self.amount = amount 
         self.date = date
         self.status = status
+        self.link = link
 
-
-class Obligation(Task):
+#Υποκλάση obligation 
+class Obligation (Task):
     pass
 
-
+#Υποκλάση wishlist
 class Wishlist(Task):
-    def __init__(self, name, amount, date, status, link):
-        super().__init__(name, amount, date, status)
-        self.link = link
+    pass
