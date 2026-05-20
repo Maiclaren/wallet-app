@@ -464,6 +464,13 @@ class InspectFrame(Frame):
 
         buttons_frame = Frame(self)
         buttons_frame.pack(pady=15)
+        
+        #Κουμπιά διαγραφής εγγραφών
+        delete_exchange_button = Button(buttons_frame,text="Delete Selected Exchange",command=self.delete_selected_exchange)
+        delete_exchange_button.pack(side=LEFT,padx=5)
+
+        delete_task_button = Button(buttons_frame,text="Delete Selected Task",command=self.delete_selected_task)
+        delete_task_button.pack(side=LEFT,padx=5)
 
         #Μια loaf_entries ουσιαστικά είναι απλά τη δίνεις με button - την έβαλα τυπικά
         refresh_button = Button(buttons_frame, text="Refresh", command=self.load_entries)
@@ -476,6 +483,30 @@ class InspectFrame(Frame):
         back_button.pack(side=LEFT, padx=5)
 
         self.load_entries()
+
+    def delete_selected_exchange(self):
+        selected_row = self.exchange_tree.selection()#κρατάει την επιλεγμένη γραμμή
+        if not selected_row: #για να μη σκάσει
+            return
+        row_values = self.exchange_tree.item(selected_row[0],"values")
+        record_id = row_values[0] #<-το πρώτο στοιχείο της tuple
+        try:
+            self.app.db.delete_exchange(record_id)
+            self.load_entries()
+        except Exception as e:
+            print(f"Error deleting exchange: {e}")
+    
+    def delete_selected_task(self):
+        selected_row = self.task_tree.selection()#κρατάει την επιλεγμένη γραμμή
+        if not selected_row: #για να μη σκάσει
+            return
+        row_values = self.task_tree.item(selected_row[0],"values")
+        record_id = row_values[0] #<-το πρώτο στοιχείο της tuple
+        try:
+            self.app.db.delete_task(record_id)
+            self.load_entries()
+        except Exception as e:
+            print(f"Error deleting task: {e}")
 
     def load_entries(self):
         #Αρχικά σβήνω ότι έχει μείνει από προηγούμενο load
