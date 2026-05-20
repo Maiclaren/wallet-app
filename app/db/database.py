@@ -45,6 +45,24 @@ class Database:
         finally:
             conn.close()
 
+    #Για edit εγγραφών exchanges
+    def update_exchange(self,record_id, exchange_type, amount, date, category, description):
+        conn = self.connect()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE exchanges SET 
+                    exchange_type = ?,
+                    amount = ?,
+                    date = ?, 
+                    category = ?, 
+                    description = ?
+                WHERE id = ?
+                """, (exchange_type, amount, date, category, description, record_id))
+            conn.commit()
+        finally:
+            conn.close()
+
     #Def για να επιστρέφω τα exchanges ανά user (στο inspect Frame της gui)
     def get_user_exchanges(self,user_id):
         conn = self.connect()
@@ -124,6 +142,24 @@ class Database:
         conn.close()
         return rows
     
+    #Για edit εγγραφών tasks
+    def update_task(self, record_id, task_type, name, amount, date, status, link):
+        conn = self.connect()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE tasks SET 
+                    task_type = ?,
+                    name = ?,
+                    amount = ?,
+                    date = ?, 
+                    status = ?, 
+                    link = ?
+                WHERE id = ?
+                """, (task_type, name, amount, date, status, link, record_id))
+            conn.commit()
+        finally:
+            conn.close()
 
     #Δημιουργούμε πίνακα users (αν δεν υπάρχει) με unique username
     def create_users_table(self):
