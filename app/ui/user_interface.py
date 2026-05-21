@@ -478,7 +478,13 @@ class InspectFrame(Frame):
 
         export_button = Button(buttons_frame, text="Export to Excel", command=self.export_to_excel)
         export_button.pack(side=LEFT, padx=5)
-
+        #Button για edit των selected rows
+        edit_exchange_Button = Button(buttons_frame, text="Edit Selected Exchange", command=self.edit_selected_exchange)
+        edit_exchange_Button.pack(side=LEFT,padx=5)
+        
+        edit_task_Button = Button(buttons_frame, text="Edit Selected Task", command=self.edit_selected_task)
+        edit_task_Button.pack(side=LEFT,padx=5)
+        
         back_button = Button(buttons_frame, text="Back", command=lambda: self.app.show_frame(MainPage))
         back_button.pack(side=LEFT, padx=5)
 
@@ -495,7 +501,7 @@ class InspectFrame(Frame):
             self.load_entries()
         except Exception as e:
             print(f"Error deleting exchange: {e}")
-    
+
     def delete_selected_task(self):
         selected_row = self.task_tree.selection()#κρατάει την επιλεγμένη γραμμή
         if not selected_row: #για να μη σκάσει
@@ -534,6 +540,36 @@ class InspectFrame(Frame):
             self.task_tree.insert("",END,
                 values=(record_id, task_type, name, amount, date, status, link))
             
+    def edit_selected_exchange(self):
+        selected_row = self.exchange_tree.selection()
+        if not selected_row:
+            return
+        
+        selected_values = self.exchange_tree.item(selected_row[0],"values")
+        record_id = selected_values[0]
+        exchange_type = selected_values[1]
+        amount = selected_values[2]
+        date = selected_values[3]
+        category = selected_values[4]
+        description = selected_values[5]
+
+        #Χρησιμοποιώ lambda για να περάσω class & arguments
+        self.app.show_frame(lambda parent,app:EditExchangeFrame(parent,app,record_id,exchange_type,amount,date,category,description))
+    def edit_selected_task(self):
+        selected_item = self.task_tree.selection()
+        if not selected_item:
+            return
+        item_values = self.task_tree.item(selected_item[0], "values")
+        record_id = item_values[0]
+        task_type = item_values[1]
+        name = item_values[2]
+        amount = item_values[3]
+        date = item_values[4]
+        status = item_values[5]
+        link = item_values[6]
+
+        self.app.show_frame(lambda parent, app: EditTaskFrame(parent,app,record_id,task_type,name,amount,date,status,link))
+
     def export_to_excel(self):
         if self.df_exchanges.empty and self.df_tasks.empty:
             return
@@ -545,6 +581,229 @@ class InspectFrame(Frame):
         with pd.ExcelWriter(file_path) as writer:
             self.df_exchanges.to_excel(writer, sheet_name="Exchanges", index=False)
             self.df_tasks.to_excel(writer, sheet_name="Tasks", index=False)
+
+class EditExchangeFrame(Frame):
+    def __init__(self,parent,app,record_id,exchange_type,amount,date,category,description):
+        super().__init__(parent)
+        self.app = app
+        self.record_id = record_id
+        self.app.root.title("Wallet App - Edit Exchange")
+
+        self.revenue_categories = ["Salary","Bonus", "Freelance","Business","Gift","Refund", "Investment", "Rental Income", "Other"]
+        self.expense_categories = ["Food", "Utilities", "Fuel", "Transport", "Rent", "Bills", "Shopping", "Health", "Entertainment",
+                                    "Education", "Travel", "Other"]   
+        
+        self.status_label = Label(self,text="",fg="red")
+        self.status_label.pack(pady=10)
+        form_frame = Frame(self)
+        form_frame.pack(pady=20)
+
+        Label(form_frame, text="Type").grid(row=0, column=0, padx=5, pady=10)
+        self.entry_type = ttk.Combobox(form_frame, values=["Revenue", "Expense"], state="readonly")
+        self.entry_type.grid(row=0, column=1, padx=5, pady=10)
+        self.entry_type.set(exchange_type.capitalize())
+        self.entry_type.bind("<<ComboboxSelected>>", self.update_category_values)
+
+        Label(form_frame, text="Date (dd/mm/yyyy)").grid(row=1,column=0,padx=5,pady=10)
+        self.date_entry = Entry(form_frame)
+        self.date_entry.grid(row=1,column=1,padx=5,pady=10)
+        self.date_entry.insert(0, self.display_date(date))
+
+        Label(form_frame, text="Amount").grid(row=2,column=0,padx=5,pady=10)
+        self.amount_entry = Entry(form_frame)
+        self.amount_entry.grid(row=2, column=1, padx=5, pady=10)
+        self.amount_entry.insert(0, str(amount))
+
+        Label(form_frame, text="Category").grid(row=3,column=0,padx=5,pady=10)
+        self.category_combo = ttk.Combobox(form_frame, state="readonly")
+        self.category_combo.grid(row=3,column=1,padx=5,pady=10)
+
+        self.update_category_values()
+        self.category_combo.set(category)      
+
+        Label(form_frame, text="Description").grid(row=4,column=0,padx=5,pady=10)
+        self.description_entry = Entry(form_frame)
+        self.description_entry.grid(row=4,column=1,padx=5, pady=10)
+        self.description_entry.insert(0,description if description else "")
+
+        save_button = Button(form_frame,text="Save Changes",command=self.save_changes)
+        save_button.grid(row=5,column=0,columnspan=2,pady=10)
+
+        back_button = Button(self,text="Back",command=lambda:self.app.show_frame(InspectFrame))
+        back_button.pack(pady=5)
+
+    #Παίρνω το entry type και το πετάω απευθείας στην κατηγορία
+    def update_category_values(self, event=None):
+        selected_type = self.entry_type.get()
+        if selected_type == "Revenue":
+            self.category_combo["values"] = self.revenue_categories
+        else:
+            self.category_combo["values"] = self.expense_categories       
+    
+    #Ομοίως όπως και στο αρχικό data input process
+    def normalize_date(self, date_text):
+        try:
+            parsed_date = datetime.strptime(date_text, "%d/%m/%Y")
+            return parsed_date.strftime("%Y-%m-%d")
+        except ValueError:
+            return None
+    def display_date(self, stored_date):
+        try:
+            parsed_date = datetime.strptime(stored_date, "%Y-%m-%d")
+            return parsed_date.strftime("%d/%m/%Y")
+        except ValueError:
+            return stored_date
+
+    def save_changes(self):
+        exchange_type =self.entry_type.get().strip().lower()
+        date =self.date_entry.get().strip()
+        amount =self.amount_entry.get().strip()
+        category= self.category_combo.get().strip()
+        description =self.description_entry.get().strip()
+
+        if exchange_type == "" or date == "" or amount == "" or category == "":
+            self.status_label.config(text="Please fill in all required fields.", fg="red")
+            return
+        try:
+            amount = float(amount)
+        except ValueError:
+            self.status_label.config(text="Please use a valid number for amount.", fg="red")
+            return
+        normalized_date = self.normalize_date(date)
+        if normalized_date is None:
+            self.status_label.config(text="Change format to dd/mm/yyyy.", fg="red")
+            return
+        try:
+            self.app.db.update_exchange(
+                self.record_id,
+                exchange_type,
+                amount,
+                normalized_date,
+                category,
+                description)
+            self.app.show_frame(InspectFrame)
+        except Exception as e:
+            self.status_label.config(text=f"Error updating exchange: {e}",fg="red")
+
+#copy paste σχεδόν από πάνω για τα task
+class EditTaskFrame(Frame):
+    def __init__(self,parent,app,record_id,task_type,name,amount,date,status,link):
+        super().__init__(parent)
+        self.app = app
+        self.record_id = record_id
+        self.app.root.title("Wallet App - Edit Task")
+
+        self.status_label = Label(self,text="",fg="red")
+        self.status_label.pack(pady=10)
+
+        form_frame = Frame(self)
+        form_frame.pack(pady=20)
+
+        Label(form_frame, text="Type").grid(row=0, column=0,padx=5,pady=10)
+        self.task_type_combo = ttk.Combobox(
+            form_frame,
+            values=["Obligation", "Wishlist"],
+            state="readonly")
+        self.task_type_combo.grid(row=0,column=1,padx=5,pady=10)
+        self.task_type_combo.set(task_type.capitalize())
+        self.task_type_combo.bind("<<ComboboxSelected>>", self.toggle_link_field)
+
+        Label(form_frame, text="Name").grid(row=1,column=0,padx=5,pady=10)
+        self.name_entry = Entry(form_frame)
+        self.name_entry.grid(row=1, column=1, padx=5,pady=10)
+        self.name_entry.insert(0, name)
+
+        Label(form_frame, text="Amount").grid(row=2,column=0,padx=5,pady=10)
+        self.amount_entry = Entry(form_frame)
+        self.amount_entry.grid(row=2,column=1,padx=5,pady=10)
+        self.amount_entry.insert(0, str(amount))
+
+        Label(form_frame, text="Date (dd/mm/yyyy)").grid(row=3, column=0,padx=5,pady=10)
+        self.date_entry = Entry(form_frame)
+        self.date_entry.grid(row=3,column=1, padx=5, pady=10)
+        self.date_entry.insert(0,self.display_date(date))
+
+        Label(form_frame, text="Status").grid(row=4,column=0,padx=5,pady=10)
+        self.status_combo = ttk.Combobox(
+            form_frame,
+            values=["Pending", "Completed"],
+            state="readonly"
+        )
+        self.status_combo.grid(row=4,column=1,padx=5,pady=10)
+        self.status_combo.set(status)
+
+        self.link_label = Label(form_frame, text="Link")
+        self.link_entry = Entry(form_frame)
+
+        if task_type.lower() == "wishlist":
+            self.link_label.grid(row=5,column=0,padx=5,pady=10)
+            self.link_entry.grid(row=5,column=1,padx=5,pady=10)
+            self.link_entry.insert(0, link if link else "")
+            save_row = 6
+        else:
+            save_row = 5
+
+        save_button = Button(form_frame,text="Save Changes",command=self.save_changes)
+        save_button.grid(row=save_row,column=0,columnspan=2,pady=10)
+
+        back_button = Button(self,text="Back",command=lambda: self.app.show_frame(InspectFrame))
+        back_button.pack(pady=5)
+
+    def toggle_link_field(self, event=None):
+        selected_type = self.task_type_combo.get()
+
+        self.link_label.grid_forget()
+        self.link_entry.grid_forget()
+
+        if selected_type == "Wishlist":
+            self.link_label.grid(row=5,column=0,padx=5,pady=10)
+            self.link_entry.grid(row=5,column=1,padx=5,pady=10)
+
+    def normalize_date(self, date_text):
+        try:
+            parsed_date = datetime.strptime(date_text,"%d/%m/%Y")
+            return parsed_date.strftime("%Y-%m-%d")
+        except ValueError:
+            return None
+
+    def display_date(self, stored_date):
+        try:
+            parsed_date = datetime.strptime(stored_date,"%Y-%m-%d")
+            return parsed_date.strftime("%d/%m/%Y")
+        except ValueError:
+            return stored_date
+
+    def save_changes(self):
+        task_type = self.task_type_combo.get().strip().lower()
+        name = self.name_entry.get().strip()
+        amount = self.amount_entry.get().strip()
+        date = self.date_entry.get().strip()
+        status = self.status_combo.get().strip()
+        link = self.link_entry.get().strip() if task_type == "wishlist" else None
+        if task_type == "" or name == "" or amount == "" or date == "" or status == "":
+            self.status_label.config(text="Please fill in all required fields.", fg="red")
+            return
+        try:
+            amount = float(amount)
+        except ValueError:
+            self.status_label.config(text="Please use a valid number for amount.", fg="red")
+            return
+        normalized_date = self.normalize_date(date)
+        if normalized_date is None:
+            self.status_label.config(text="Date must be in format dd/mm/yyyy.", fg="red")
+            return
+        try:
+            self.app.db.update_task(
+                self.record_id,
+                task_type,
+                name,
+                amount,
+                normalized_date,
+                status,
+                link)
+            self.app.show_frame(InspectFrame)
+        except Exception as e:
+            self.status_label.config(text=f"Error updating task: {e}",fg="red")
 
 new_app = Application()
 new_app.run()
