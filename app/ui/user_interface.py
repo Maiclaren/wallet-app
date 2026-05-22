@@ -219,7 +219,7 @@ class NewEntry(Frame):
         self.entry_type.bind("<<ComboboxSelected>>", self.handle_entry_type)
 
         back_button = Button(self,text='Επιστροφή',command=lambda: self.app.show_frame(MainPage))
-        back_button.pack(pady=5)
+        back_button.pack(padx=20,pady=10)        
         #Για να επιστρέφω την κατάσταση μετά το press save button
         self.status_label = Label(self,text="",fg='red')
         self.status_label.pack(pady=10)
@@ -270,13 +270,10 @@ class NewEntry(Frame):
         #categories -> αναλόγως το exhange type:
         categories = self.get_categories_for_current_type()
         self.category_combo = ttk.Combobox(self.form_frame, values=categories, state='readonly')
-        self.category_combo.grid(row=3, column=1, padx=5, pady=10)
+        self.category_combo.grid(row=4, column=1, padx=5, pady=10)
 
-        new_category_button = Button(
-        self.form_frame,
-        text="Νέα κατηγορία",
-        command=self.open_new_category_window)
-        new_category_button.grid(row=3, column=2, padx=5, pady=10)
+        new_category_button = Button(self.form_frame,text="Νέα κατηγορία",command=self.open_new_category_window)
+        new_category_button.grid(row=4, column=2, padx=5, pady=10)
 
         description_label = Label(self.form_frame,text="Περιγραφή")
         description_label.grid(row=5,column=0,padx=5,pady=10)
@@ -285,7 +282,7 @@ class NewEntry(Frame):
         self.description_entry.grid(row=5,column=1,padx=5,pady=10)
 
         save_button = Button(self.form_frame, text='Αποθήκευση', command=self.save_entry)
-        save_button.grid(row=6,column=0,columnspan=2,pady=10)
+        save_button.grid(row=6,column=2,pady=10)
 
     #Με αυτό χτίζω το task form
     def build_task_form(self,selected_type):
