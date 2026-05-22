@@ -20,7 +20,10 @@ def revenue_expense_chart(total_revenue, total_expense):
 #Γράφημα εξόδων ανά κατηγορία
 def expenses_category_chart(expenses_by_category):
 
-    expenses_by_category.plot(kind="bar")
+    expenses_by_category.plot(
+        kind="bar",
+        color="royalblue"
+    )
 
     plt.title("Expenses by Category")
 
