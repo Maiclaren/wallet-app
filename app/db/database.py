@@ -195,7 +195,7 @@ class Database:
     def create_categories_table(self):
         conn = self.connect()
         cursor = conn.cursor()
-        cursor.execute("""CREATE TABLE IF NOT EXISTS exchange_category (
+        cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id INTEGER NOT NULL UNIQUE,
                             category_name TEXT NOT NULL UNIQUE,
