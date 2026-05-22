@@ -268,9 +268,15 @@ class NewEntry(Frame):
         category_label.grid(row=4,column=0,padx=5,pady=10)
 
         #categories -> αναλόγως το exhange type:
-        categories = self.revenue_categories if selected_type=="Έσοδα" else self.expense_categories
+        categories = self.get_categories_for_current_type()
         self.category_combo = ttk.Combobox(self.form_frame, values=categories, state='readonly')
-        self.category_combo.grid(row=4,column=1,padx=5,pady=10)
+        self.category_combo.grid(row=3, column=1, padx=5, pady=10)
+
+        new_category_button = Button(
+        self.form_frame,
+        text="Νέα κατηγορία",
+        command=self.open_new_category_window)
+        new_category_button.grid(row=3, column=2, padx=5, pady=10)
 
         description_label = Label(self.form_frame,text="Περιγραφή")
         description_label.grid(row=5,column=0,padx=5,pady=10)
@@ -333,6 +339,50 @@ class NewEntry(Frame):
         except ValueError:
             return None
         
+    def get_categories_for_current_type(self):
+        if self.selected_entry_type == "Έσοδα":
+            default_categories = self.revenue_categories
+        else:
+            default_categories = self.expense_categories
+        db_type = ENTRY_TYPE_TO_DB[self.selected_entry_type]
+        custom_categories = self.app.db.get_user_categories(self.app.current_user_id, db_type)
+        return sorted(set(default_categories + custom_categories))
+    
+    def open_new_category_window(self):
+        if self.selected_entry_type not in ["Έσοδα", "Έξοδα"]:
+            self.status_label.config(text="Νέα κατηγορία επιτρέπεται μόνο για έσοδα ή έξοδα.", fg="red")
+            return
+        #Χτίζω ένα καινούργιο top level παραθυρο tkinter για τη δημιουργία νέας κατηγορίας
+        popup = Toplevel(self)
+        popup.title("Νέα κατηγορία")
+        popup.grab_set()
+
+        Label(popup, text="Όνομα νέας κατηγορίας").grid(row=0, column=0, padx=10, pady=10)
+
+        new_category_entry = Entry(popup)
+        new_category_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        def save_new_category():
+            category_name = new_category_entry.get().strip()
+            if category_name == "":
+                return
+            db_type = ENTRY_TYPE_TO_DB[self.selected_entry_type]
+            #αν πάρω bool success από το insert στη ΒΔ:
+            success = self.app.db.create_category(
+                self.app.current_user_id,
+                category_name,
+                db_type)
+            if success: 
+                updated_categories = self.get_categories_for_current_type()
+                self.category_combo["values"] = updated_categories
+                self.category_combo.set(category_name)
+                self.status_label.config(text="Η νέα κατηγορία αποθηκεύτηκε.", fg="green")
+                popup.destroy()
+            else:
+                self.status_label.config(text="Η κατηγορία υπάρχει ήδη.", fg="red")
+        Button(popup, text="Αποθήκευση", command=save_new_category).grid(row=1, column=0, columnspan=2, pady=10)
+
+
     #Ομοίως με τις φόρμες ανά κατηγορία, φτιάχνω saves ανα περίπτωση
     def save_entry(self):
         selected_type = self.selected_entry_type
