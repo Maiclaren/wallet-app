@@ -6,6 +6,7 @@ class Database:
         self.create_users_table()
         self.create_exchanges_table()
         self.create_tasks_table()
+        self.create_categories_table()
 
     def connect(self):
         return sqlite3.connect(self.db_name)
@@ -191,12 +192,53 @@ class Database:
         finally:
             conn.close()
     
+    def create_categories_table(self):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""CREATE TABLE IF NOT EXISTS exchange_category (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER NOT NULL UNIQUE,
+                            category_name TEXT NOT NULL UNIQUE,
+                            category_type TEXT NOT NULL UNIQUE,
+                            FOREIGN KEY (user_id) REFERENCES users(id));
+                            """)
+        conn.commit()
+        conn.close()
+
+    def create_category(self, user_id, category_name, category_type):
+        conn = self.connect()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO categories (user_id, category_name, category_type)
+                VALUES (?, ?, ?)
+            """, (user_id, category_name, category_type))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+        finally:
+            conn.close()   
+    def get_user_categories(self, user_id, category_type):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT category_name
+            FROM categories
+            WHERE user_id = ? AND category_type = ?
+            ORDER BY category_name
+            """, (user_id, category_type))
+        rows = cursor.fetchall()
+        conn.close()
+        return [row[0] for row in rows]       
+     
     #Έλεγχος εύρεσης ή μη χρήστη με fetchone και return 
     def validate_user(self, username, password):
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM users WHERE username = ? AND password = ?",
+            
             (username,password)
         )
         user = cursor.fetchone()
