@@ -197,9 +197,10 @@ class Database:
         cursor = conn.cursor()
         cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            user_id INTEGER NOT NULL UNIQUE,
-                            category_name TEXT NOT NULL UNIQUE,
-                            category_type TEXT NOT NULL UNIQUE,
+                            user_id INTEGER NOT NULL,
+                            category_name TEXT NOT NULL,
+                            category_type TEXT NOT NULL,
+                            UNIQUE(user_id, category_name, category_type),
                             FOREIGN KEY (user_id) REFERENCES users(id));
                             """)
         conn.commit()
