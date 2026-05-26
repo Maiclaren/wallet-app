@@ -475,6 +475,20 @@ class InspectFrame(Frame):
 
         title_label = Label(self, text="Ανασκόπηση εγγραφών", font=("Arial", 14))
         title_label.pack(pady=10)
+        filters_frame = Frame(self)
+        filters_frame.pack(pady=5)
+
+        Label(filters_frame, text="Τύπος").pack(side=LEFT, padx=5)
+        self.exchange_type_filter = ttk.Combobox(filters_frame,values=["Όλα", "Έσοδα", "Έξοδα"],state="readonly",width=15)
+        self.exchange_type_filter.pack(side=LEFT, padx=5)
+        self.exchange_type_filter.set("Όλα")
+        self.exchange_type_filter.bind("<<ComboboxSelected>>", self.apply_exchange_filters)
+
+        Label(filters_frame, text="Κατηγορία").pack(side=LEFT, padx=5)
+        self.exchange_category_filter = ttk.Combobox(filters_frame,values=["Όλες"],state="readonly",width=20)
+        self.exchange_category_filter.pack(side=LEFT, padx=5)
+        self.exchange_category_filter.set("Όλες")
+        self.exchange_category_filter.bind("<<ComboboxSelected>>", self.apply_exchange_filters)
 
         #Θα φτιάξω δύο ξεχωριστά treeview (1.exchanges 2. tasks) ώστε να μη γεμίσουμε με στήλες άκυρες κατά περίπτωση
         #Για exchanges:
@@ -610,6 +624,11 @@ class InspectFrame(Frame):
         task_cols = ["id", "user_id", "task_type", "name", "amount", "date", "status", "link"]
         self.df_exchanges = pd.DataFrame(exchanges, columns=exchange_cols)
         self.df_tasks = pd.DataFrame(tasks, columns=task_cols)
+        if not self.df_exchanges.empty:
+            categories = sorted(self.df_exchanges["category"].dropna().unique().tolist())
+            self.exchange_category_filter["values"] = ["Όλες"] + categories
+        else:
+            self.exchange_category_filter["values"] = ["Όλες"]
 
         for row_data in exchanges:
             record_id, user_id, exchange_type, amount, date, category, description = row_data
@@ -666,6 +685,36 @@ class InspectFrame(Frame):
             self.df_exchanges.to_excel(writer, sheet_name="Συναλλαγές", index=False)
             self.df_tasks.to_excel(writer, sheet_name="Δραστηριότητες", index=False)
 
+    def apply_exchange_filters(self, event=None):
+        for item in self.exchange_tree.get_children():
+            self.exchange_tree.delete(item)
+
+        if self.df_exchanges.empty:
+            return
+
+        filtered_df = self.df_exchanges.copy()
+
+        selected_type = self.exchange_type_filter.get()
+        selected_category = self.exchange_category_filter.get()
+
+        if selected_type == "Έσοδα":
+            filtered_df = filtered_df[filtered_df["exchange_type"] == "revenue"]
+        elif selected_type == "Έξοδα":
+            filtered_df = filtered_df[filtered_df["exchange_type"] == "expense"]
+
+        if selected_category != "Όλες":
+            filtered_df = filtered_df[filtered_df["category"] == selected_category]
+
+        for _, row in filtered_df.iterrows():
+            display_type = DB_TO_ENTRY_TYPE.get(row["exchange_type"], row["exchange_type"])
+            self.exchange_tree.insert("",END,values=(
+                row["id"],
+                display_type,
+                row["amount"],
+                row["date"],
+                row["category"],
+                row["description"]))
+
 class EditExchangeFrame(Frame):
     def __init__(self,parent,app,record_id,exchange_type,amount,date,category,description):
         super().__init__(parent)
@@ -717,7 +766,7 @@ class EditExchangeFrame(Frame):
         back_button.pack(pady=5)
 
     #Παίρνω το entry type και το πετάω απευθείας στην κατηγορία
-    def update_category_values(self, event=None):
+    def update_category_values(self,event=None):
         selected_type = self.entry_type.get()
         if selected_type == "Έσοδα":
             self.category_combo["values"] = self.revenue_categories
@@ -731,6 +780,7 @@ class EditExchangeFrame(Frame):
             return parsed_date.strftime("%Y-%m-%d")
         except ValueError:
             return None
+        
     def display_date(self, stored_date):
         try:
             parsed_date = datetime.strptime(stored_date, "%Y-%m-%d")
