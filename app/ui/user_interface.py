@@ -4,6 +4,9 @@ from tkinter import filedialog
 import pandas as pd
 from app.db.database import Database
 from datetime import datetime
+#Τα παρακάτω τα προσθέτω για να παίξουν μέσα στο Frame που έχω και όχι σε ανεξάρτητα windows
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 ENTRY_TYPE_TO_DB = {"Έσοδα": "revenue","Έξοδα": "expense","Υποχρεώσεις": "obligation","Επιθυμίες": "wishlist"}
 DB_TO_ENTRY_TYPE = {v: k for k, v in ENTRY_TYPE_TO_DB.items()}
@@ -32,7 +35,7 @@ class Application():
         main_menu = Menu(menu, tearoff=0)
         main_menu.add_command(label="Νέα εγγραφή",command= lambda: self.show_frame(NewEntry))
         main_menu.add_command(label="Ανασκόπηση εγγραφών",command=lambda: self.show_frame(InspectFrame))
-        main_menu.add_command(label="Στατιστικά εγγραφών")
+        main_menu.add_command(label="Στατιστικά εγγραφών",command=lambda: self.show_frame(StatsFrame))
         main_menu.add_command(label="Έξοδος",command=self.root.destroy)
         menu.add_cascade(label="Κεντρικό μενού",menu=main_menu)
         self.root.config(menu=menu)
@@ -46,7 +49,6 @@ class WelcomeFrame(Frame):
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
-        
 
         welcome_label = Label(self, text="Καλώς ορίσατε στο Wallet-App!\n\nΠιέστε Εγγραφή για δημιουργία λογαριασμού ή Σύνδεση για να εισέλθετε.")
         welcome_label.grid(row=0, column=0, columnspan=2, pady=10)
@@ -157,8 +159,50 @@ class SignInFrame(Frame):
             self.app.current_user_id = account_status[0]
             self.app.current_username = account_status[1]
             self.app.show_frame(MainPage)
+            self.show_pending_obligations_popup()
         else:
             self.label_signin_status.config(text="Λάθος username ή password. Δοκιμάστε ξανά.", fg='red')
+
+    def show_pending_obligations_popup(self):
+        tasks = self.app.db.get_user_tasks(self.app.current_user_id)
+        if not tasks:
+            return
+        task_cols = ["id", "user_id", "task_type", "name", "amount", "date", "status", "link"]
+        df_tasks = pd.DataFrame(tasks, columns=task_cols)
+        if df_tasks.empty:
+            return
+        pending_obligations = df_tasks[(df_tasks["task_type"] == "obligation") & (df_tasks["status"] == "pending")].copy()
+
+        if pending_obligations.empty:
+            return
+
+        pending_obligations["date"] = pd.to_datetime(pending_obligations["date"], errors="coerce")
+        today = pd.Timestamp.today().normalize()
+
+        pending_obligations["days_difference"] = (pending_obligations["date"] - today).dt.days
+        popup = Toplevel(self.app.root) #εμφανίζω παράθυρο On top του Frame
+        popup.title("Εκκρεμείς Υποχρεώσεις")
+        popup.grab_set()
+
+        Label(popup,text="Έχεις τις παρακάτω εκκρεμείς υποχρεώσεις:",font=("Arial", 11)).pack(padx=10, pady=10)
+
+        text_box = Text(popup, width=70, height=12)
+        text_box.pack(padx=10, pady=10)
+
+        for _, row in pending_obligations.iterrows():
+            days = row["days_difference"]
+            if pd.isna(days): #σε περίπτωση που δε συμπληρωθεί
+                days_text = "Άγνωστη ημερομηνία"
+            elif days < 0:
+                days_text = f"Καθυστερεί {-days} ημέρες"
+            elif days == 0:
+                days_text = "Λήγει σήμερα"
+            else:
+                days_text = f"Σε {days} ημέρες"
+
+            text_box.insert(END,f"- {row['name']} | Ποσό: {row['amount']:.2f} | Ημερομηνία: {row['date'].date()} | {days_text}\n")
+        text_box.config(state=DISABLED)
+        Button(popup, text="OK", command=popup.destroy).pack(pady=10)
 
 #Μετά το sign in Frame το MainFrame γίνεται το κεντρικό Frame επιλογής κατεύθυνσης ανά ενέργεια. Η κάθε ενέργεια είναι και αυτή με τη σειρά της
 #ένα object Frame: New Entry κλπ.. 
@@ -181,7 +225,7 @@ class MainPage(Frame):
         inspect_button = Button(self, text="Ανασκόπηση εγγραφών", command=lambda: self.app.show_frame(InspectFrame))
         inspect_button.pack(pady=5)        
         
-        stats_button = Button(self, text="Στατιστικά εγγραφών")
+        stats_button = Button(self, text="Στατιστικά εγγραφών", command=lambda:self.app.show_frame(StatsFrame))
         stats_button.pack(pady=5)   
         
         logout_button = Button(self, text="Έξοδος", command=lambda: self.app.show_frame(WelcomeFrame))
@@ -469,6 +513,24 @@ class InspectFrame(Frame):
         self.app = app
         self.app.root.title("Wallet App - Ανασκόπηση εγγραφών")
 
+        stats_frame = Frame(self)
+        stats_frame.pack(pady=10)
+
+        self.label_total_revenue = Label(stats_frame, text="Σύνολο εσόδων: 0.00")
+        self.label_total_revenue.grid(row=0, column=0, padx=10, pady=5)
+
+        self.label_total_expense = Label(stats_frame, text="Σύνολο εξόδων: 0.00")
+        self.label_total_expense.grid(row=0, column=1, padx=10, pady=5)
+
+        self.label_net_balance = Label(stats_frame, text="Υπόλοιπο: 0.00")
+        self.label_net_balance.grid(row=0, column=2, padx=10, pady=5)
+
+        self.label_total_tasks = Label(stats_frame, text="Σύνολο δραστηριοτήτων: 0")
+        self.label_total_tasks.grid(row=1, column=0, padx=10, pady=5)
+
+        self.label_pending_tasks = Label(stats_frame, text="Εκκρεμείς: 0")
+        self.label_pending_tasks.grid(row=1, column=1, padx=10, pady=5)
+
         #Αρχικόποιώ τα dataframes τα οποία θα χτίσω μετά και θα τα σερβίρω στα export σε xlsx
         self.df_exchanges = pd.DataFrame()
         self.df_tasks = pd.DataFrame()
@@ -642,7 +704,35 @@ class InspectFrame(Frame):
             display_status = DB_TO_STATUS.get(status, status)
             self.task_tree.insert("",END,
                 values=(record_id, display_type, name, amount, date, display_status, link))
+        self.short_statisticts()
             
+    def short_statisticts(self):
+        exchanges = self.app.db.get_user_exchanges(self.app.current_user_id)
+        tasks = self.app.db.get_user_tasks(self.app.current_user_id)
+        exchange_cols = ["id", "user_id", "exchange_type", "amount", "date", "category", "description"]
+        task_cols = ["id", "user_id", "task_type", "name", "amount", "date", "status", "link"]
+        self.df_exchanges = pd.DataFrame(exchanges, columns=exchange_cols)
+        self.df_tasks = pd.DataFrame(tasks, columns=task_cols)
+        if self.df_exchanges.empty:
+            total_revenue = 0
+            total_expense = 0
+        else:
+            total_revenue = self.df_exchanges.loc[self.df_exchanges["exchange_type"]=="revenue","amount"].sum()
+            total_expense = self.df_exchanges.loc[self.df_exchanges["exchange_type"]=="expense","amount"].sum()
+        net_balance = total_revenue-total_expense
+        
+        if self.df_tasks.empty:
+            total_tasks = 0
+            pending_tasks = 0
+        else:
+            total_tasks = len(self.df_tasks)
+            pending_tasks = (self.df_tasks["status"] == "pending").sum()
+        self.label_total_revenue.config(text=f"Σύνολο εσόδων: {total_revenue:.2f}")
+        self.label_total_expense.config(text=f"Σύνολο εξόδων: {total_expense:.2f}")
+        self.label_net_balance.config(text=f"Υπόλοιπο: {net_balance:.2f}")
+        self.label_total_tasks.config(text=f"Σύνολο δραστηριοτήτων: {total_tasks}")
+        self.label_pending_tasks.config(text=f"Εκκρεμείς: {pending_tasks}")
+
     def edit_selected_exchange(self):
         selected_row = self.exchange_tree.selection()
         if not selected_row:
@@ -945,21 +1035,62 @@ class StatsFrame(Frame):
         super().__init__(parent)
         self.app = app
         self.app.root.title("Wallet App - Στατιστικά")
-
         exchanges = self.app.db.get_user_exchanges(self.app.current_user_id)
         tasks = self.app.db.get_user_tasks(self.app.current_user_id)
-
         exchange_cols = ["id", "user_id", "exchange_type", "amount", "date", "category", "description"]
         task_cols = ["id", "user_id", "task_type", "name", "amount", "date", "status", "link"]
 
         exchanges_df = pd.DataFrame(exchanges,columns=exchange_cols)
         tasks_df = pd.DataFrame(tasks,columns=task_cols)
 
-        stats_label = Label(self)
+        total_revenue = 0 if exchanges_df.empty else exchanges_df.loc[exchanges_df["exchange_type"] == "revenue", "amount"].sum()
+        total_expense = 0 if exchanges_df.empty else exchanges_df.loc[exchanges_df["exchange_type"] == "expense", "amount"].sum()
+
+        net_balance = total_revenue - total_expense
+
+        total_tasks = 0 if tasks_df.empty else len(tasks_df)
+        pending_tasks = 0 if tasks_df.empty else (tasks_df["status"] == "pending").sum()
+        completed_tasks = 0 if tasks_df.empty else (tasks_df["status"] == "completed").sum()
+
+        stats_label = Label(self,text="Wallet App - Στατιστικά",font=("Arial",12))
         stats_label.pack(pady=10)
 
-        
 
-        exchanges = self
+        stats_frame = Frame(self)
+        stats_frame.pack(pady=10)
+
+        Label(stats_frame, text=f"Σύνολο εσόδων: {total_revenue:.2f}").grid(row=0, column=0, padx=10, pady=8)
+        Label(stats_frame, text=f"Σύνολο εξόδων: {total_expense:.2f}").grid(row=0, column=1, padx=10, pady=8)
+        Label(stats_frame, text=f"Υπόλοιπο: {net_balance:.2f}").grid(row=0, column=2, padx=10, pady=8)
+
+        Label(stats_frame, text=f"Σύνολο δραστηριοτήτων: {total_tasks}").grid(row=1, column=0, padx=10, pady=8)
+        Label(stats_frame, text=f"Εκκρεμείς: {pending_tasks}").grid(row=1, column=1, padx=10, pady=8)
+        Label(stats_frame, text=f"Ολοκληρωμένες: {completed_tasks}").grid(row=1, column=2, padx=10, pady=8)
+
+        back_button = Button(self, text="Επιστροφή", command=lambda: self.app.show_frame(MainPage))
+        back_button.pack(pady=10)
+        #exchanges_bar_chart_label = Label(stats_label)
+        #exchanges_bar_chart_label.grid(row=1,column=0)
+        charts_frame = Frame(self)
+        charts_frame.pack(pady=10)
+
+        fig1 = Figure(figsize=(4, 3), dpi=100)
+        ax1 = fig1.add_subplot(111)
+        ax1.bar(["Έσοδα", "Έξοδα"], [total_revenue, total_expense])
+        ax1.set_title("Έσοδα / Έξοδα")
+        canvas1 = FigureCanvasTkAgg(fig1, master=charts_frame)
+        canvas1.draw()
+        canvas1.get_tk_widget().grid(row=0, column=0, padx=15, pady=10)
+        fig2 = Figure(figsize=(4, 3), dpi=100)
+        ax2 = fig2.add_subplot(111)
+        ax2.bar(["Εκκρεμείς", "Ολοκληρωμένες"], [pending_tasks, completed_tasks])
+        ax2.set_title("Κατάσταση δραστηριοτήτων")
+        canvas2 = FigureCanvasTkAgg(fig2, master=charts_frame)
+        canvas2.draw()
+        canvas2.get_tk_widget().grid(row=0, column=1, padx=15, pady=10)
+        #tasks_bar_chart_label = Label(stats_label)
+        #tasks_bar_chart_label.grid(row=1,column=1)
+
+    
 new_app = Application()
 new_app.run()
