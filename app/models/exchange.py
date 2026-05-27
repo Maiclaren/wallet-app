@@ -1,27 +1,18 @@
 #η κλάση Exchange είναι υπερκλάση των Revenue & Exchange
-import pandas as pd
-
 class Exchange:
-    
-    def __init__(self, name, amount, date):
-        self.name = name
+    def __init__(self,record_id,user_id,exchange_type,amount,date,category,description):
+        self.record_id = record_id
+        self.user_id = user_id
+        self.exchange_type = exchange_type
         self.amount = amount
         self.date = date
-    
-
-
+        self.category = category
+        self.description = description
 
 class Revenue(Exchange):
-    
-    def __init__(self, name, amount, date):
-        super().__init__(name, amount, date)
-
+    def __init__(self,record_id,user_id, amount,date,category,description):
+        super().__init__(record_id, user_id, "revenue",amount,date,category,description)
 
 class Expense(Exchange):
-    
-    def __init__(self, name, amount, date):
-        super().__init__(name, amount, date)
-
-
-
-
+    def __init__(self,record_id,user_id,amount,date,category, description):
+        super().__init__(record_id,user_id,"expense",amount,date,category,description)
