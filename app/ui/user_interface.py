@@ -7,6 +7,7 @@ from datetime import datetime
 #Τα παρακάτω τα προσθέτω για να παίξουν μέσα στο Frame που έχω και όχι σε ανεξάρτητα windows
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from app.models.mapper import build_exchange_object, build_task_object
 
 ENTRY_TYPE_TO_DB = {"Έσοδα": "revenue","Έξοδα": "expense","Υποχρεώσεις": "obligation","Επιθυμίες": "wishlist"}
 DB_TO_ENTRY_TYPE = {v: k for k, v in ENTRY_TYPE_TO_DB.items()}
@@ -163,44 +164,40 @@ class SignInFrame(Frame):
         else:
             self.label_signin_status.config(text="Λάθος username ή password. Δοκιμάστε ξανά.", fg='red')
 
+    #Κάνω χρήση από models base εκδοχή των data (δλδ από objects)
     def show_pending_obligations_popup(self):
         tasks = self.app.db.get_user_tasks(self.app.current_user_id)
         if not tasks:
             return
-        task_cols = ["id", "user_id", "task_type", "name", "amount", "date", "status", "link"]
-        df_tasks = pd.DataFrame(tasks, columns=task_cols)
-        if df_tasks.empty:
+        task_objects = [build_task_object(row) for row in tasks]
+        pending_obligations = [
+            task for task in task_objects
+            if task.task_type == "obligation" and task.status == "pending"]
+        if not pending_obligations:
             return
-        pending_obligations = df_tasks[(df_tasks["task_type"] == "obligation") & (df_tasks["status"] == "pending")].copy()
-
-        if pending_obligations.empty:
-            return
-
-        pending_obligations["date"] = pd.to_datetime(pending_obligations["date"], errors="coerce")
-        today = pd.Timestamp.today().normalize()
-
-        pending_obligations["days_difference"] = (pending_obligations["date"] - today).dt.days
+        today = datetime.today().date()
         popup = Toplevel(self.app.root) #εμφανίζω παράθυρο On top του Frame
         popup.title("Εκκρεμείς Υποχρεώσεις")
         popup.grab_set()
-
-        Label(popup,text="Έχεις τις παρακάτω εκκρεμείς υποχρεώσεις:",font=("Arial", 11)).pack(padx=10, pady=10)
-
+        Label(popup, text="Έχεις τις παρακάτω εκκρεμείς υποχρεώσεις:", font=("Arial", 11)).pack(padx=10, pady=10)
         text_box = Text(popup, width=70, height=12)
         text_box.pack(padx=10, pady=10)
-
-        for _, row in pending_obligations.iterrows():
-            days = row["days_difference"]
-            if pd.isna(days): #σε περίπτωση που δε συμπληρωθεί
+        for obligation in pending_obligations:
+            try:
+                due_date = datetime.strptime(obligation.date, "%Y-%m-%d").date()
+                days = (due_date - today).days
+                if days < 0:
+                    days_text = f"Καθυστερεί {-days} ημέρες"
+                elif days == 0:
+                    days_text = "Λήγει σήμερα"
+                else:
+                    days_text = f"Σε {days} ημέρες"
+                date_text = due_date.strftime("%Y-%m-%d")
+            except ValueError:
                 days_text = "Άγνωστη ημερομηνία"
-            elif days < 0:
-                days_text = f"Καθυστερεί {-days} ημέρες"
-            elif days == 0:
-                days_text = "Λήγει σήμερα"
-            else:
-                days_text = f"Σε {days} ημέρες"
+                date_text = obligation.date
 
-            text_box.insert(END,f"- {row['name']} | Ποσό: {row['amount']:.2f} | Ημερομηνία: {row['date'].date()} | {days_text}\n")
+            text_box.insert(END,f"- {obligation.name} | Ποσό: {obligation.amount:.2f} | Ημερομηνία: {date_text} | {days_text}\n")
         text_box.config(state=DISABLED)
         Button(popup, text="OK", command=popup.destroy).pack(pady=10)
 
