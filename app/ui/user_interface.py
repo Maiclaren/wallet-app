@@ -1089,5 +1089,6 @@ class StatsFrame(Frame):
         #tasks_bar_chart_label.grid(row=1,column=1)
 
     
-new_app = Application()
-new_app.run()
+if __name__ == "__main__":
+    new_app = Application()
+    new_app.run()
