@@ -1,23 +1,52 @@
 # Wallet App
 
-An app for managing your personal e-wallet including transactions, wishlists, obligations etc 
+Το πρόγραμμα Wallet App έρχεται να λύσει ένα κοινό πρόβλημα κάθε χρήστη που
+επιθυμεί να διατηρεί ένα ψηφιακό πορτοφόλι, πάγιων και μη, συναλλαγών,
+υποχρεώσεων και Wishlist με σκοπό τη διαχείριση ενός ατομικού ή οικογενειακού
+προϋπολογισμού.
 
 ## Project Structure
 
 - `app/`  
-  Main application.
+Main application.
 
 - `app/db/`  
-  Database-related code, including SQLite connection handling and schema files.
+Συνολικά έγινε χρήση τεσσάρων πινάκων με χρήση μεθόδων δημιουργίας των &
+καταχώρησης, επεξεργασίας και διαγραφής εγγραφών:
+1) Exchanges (διατηρεί τις συναλλαγές εσόδων / εξόδων)
+2) Categories (διατηρεί τις κατηγορίες των συναλλαγών)
+3) Task (διατηρεί τις υποχρεώσεις / επιθυμίες)
+4) Users (διατηρεί τον πίνακα χρηστών)
+Οι παραπάνω πίνακες συνδέονται όλοι με reference στον πίνακα users. Για την είσοδο
+στην εφαρμογή προ-απαιτείται η δημιουργία λογαριασμού με χρήση username &
+password. Το unique με autoincrement user_id αποτελεί foreign key για τους λοιπούς
+πίνακες ακόμα και στον πίνακα categories ώστε να δίνεται η εξατομικευμένη δημιουργία
+κατηγοριών συναλλαγών που αναφέραμε πιο πάνω. Αυτές είναι εμφανείς μόνο στον
+συνδεδεμένο χρήστη και μόνο από εκείνον μπορούν να επαναχρησιμοποιηθούν σε άλλες
+εγγραφές.
 
 - `app/models/`  
-  Domain classes of the application, such as expenses, revenues, obligations, and wishlist items (all our classes).
+Περιέχει ένα σύντομο branch με τρία py files.
+1) Ένα για τη διατήρηση της master class Exchange και υποκλάσεις: Revenue/Exchange
+2) Ένα για τη διατήρηση αντίστοιχα των υποκλάσεων: Obligation/Wishlist με master την
+Task
+3) Ένα mapper για την πιο εύκολη επικοινωνία read από τη βάση και άμεσο “convert” των
+row εγγραφών σε objects των παραπάνω κλάσεων.
 
 - `app/ui/`  
-  User interface code, such as forms, services, windows, and visual components (tkinter)
+Αυτό είναι και το feature branch που χρησιμοποιήσαμε ως βάση στα σταδιακά merge των
+database-schema & models-base. Η κύρια λογική πίσω από αυτό είναι η εξής. Η
+δημιουργία μιας master class Application που κρατάει το root και το mainloop του main
+window ενώ όλα τα υπόλοιπα παράθυρα δεν είναι τίποτα άλλο παρά παιδιά Frames της
+master class. Ουσιαστικά, το μόνο παράθυρο είναι η Application και απλά μέσα της
+εναλλάσσονται frames σαν ξεχωριστά αντικείμενα με δικές τους μεθόδους. Η μόνη
+εμφάνιση νέων παραθύρων είναι κάποια top level windows που ανοίγουν σε μορφή pop
+up κατά περίπτωση όπως στο notification windows για τα pending obligations (βλ. line
+168 [def show_pending_obligations_popup] σε app/ui/user_interface.py). Με χρήση
+pandas και matlplot γίνεται ένα short data process για την εκπόνηση κάποιων
+στατιστικών και γραφημάτων τύπου bar chart αντίστοιχα.
 
 - `docs/`  
-  Documentation, diagrams, screenshots, and notes related to the project.
+  Documentation(docx & pdf), screenshots, readme.txt
 
-- `tests/`  
-  Test files for the application.
+
