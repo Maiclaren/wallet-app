@@ -556,6 +556,19 @@ class InspectFrame(Frame):
 
         exchange_frame = Frame(self)
         exchange_frame.pack(fill="x", padx=10)
+        Label(filters_frame, text="Από").pack(side=LEFT, padx=5)
+        self.exchange_date_from = Entry(filters_frame, width=12)
+        self.exchange_date_from.pack(side=LEFT, padx=5)
+
+        Label(filters_frame, text="Έως").pack(side=LEFT, padx=5)
+        self.exchange_date_to = Entry(filters_frame, width=12)
+        self.exchange_date_to.pack(side=LEFT, padx=5)
+
+        date_filter_button = Button(filters_frame, text="Φίλτρο ημερομηνίας", command=self.apply_exchange_filters)
+        date_filter_button.pack(side=LEFT, padx=5)
+
+        clear_filter_button = Button(filters_frame, text="Καθαρισμός", command=self.clear_exchange_filters)
+        clear_filter_button.pack(side=LEFT, padx=5)
 
         exchange_scrollbar = Scrollbar(exchange_frame, orient=VERTICAL)
         exchange_scrollbar.pack(side=RIGHT, fill=Y)
@@ -643,6 +656,13 @@ class InspectFrame(Frame):
         new_entry_button.pack(side=LEFT, padx=5)
 
         self.load_entries()
+
+    def clear_exchange_filters(self):
+        self.exchange_type_filter.set("Όλα")
+        self.exchange_category_filter.set("Όλες")
+        self.exchange_date_from.delete(0, END)
+        self.exchange_date_to.delete(0, END)
+        self.apply_exchange_filters()
 
     def delete_selected_exchange(self):
         selected_row = self.exchange_tree.selection()#κρατάει την επιλεγμένη γραμμή
@@ -779,26 +799,45 @@ class InspectFrame(Frame):
         if self.df_exchanges.empty:
             return
 
-        filtered_df = self.df_exchanges.copy()
-
-        selected_type = self.exchange_type_filter.get()
+        filtered_df =self.df_exchanges.copy()
+        selected_type =self.exchange_type_filter.get()
         selected_category = self.exchange_category_filter.get()
+        date_from =self.exchange_date_from.get().strip()
+        date_to =self.exchange_date_to.get().strip()
 
         if selected_type == "Έσοδα":
-            filtered_df = filtered_df[filtered_df["exchange_type"] == "revenue"]
+            filtered_df =filtered_df[filtered_df["exchange_type"] == "revenue"]
         elif selected_type == "Έξοδα":
-            filtered_df = filtered_df[filtered_df["exchange_type"] == "expense"]
+            filtered_df =filtered_df[filtered_df["exchange_type"] == "expense"]
 
         if selected_category != "Όλες":
             filtered_df = filtered_df[filtered_df["category"] == selected_category]
 
+        if date_from != "" or date_to != "":
+            temp_df = filtered_df.copy()
+            temp_df["date"] = pd.to_datetime(temp_df["date"], errors="coerce")
+            if date_from != "":
+                try:
+                    from_date = datetime.strptime(date_from, "%d/%m/%Y")
+                    temp_df = temp_df[temp_df["date"] >= from_date]
+                except ValueError:
+                    return
+            if date_to!="":
+                try:
+                    to_date =datetime.strptime(date_to, "%d/%m/%Y")
+                    temp_df =temp_df[temp_df["date"] <= to_date]
+                except ValueError:
+                    return
+            filtered_df =temp_df
+
         for _, row in filtered_df.iterrows():
             display_type = DB_TO_ENTRY_TYPE.get(row["exchange_type"], row["exchange_type"])
-            self.exchange_tree.insert("",END,values=(
+            self.exchange_tree.insert("",END,
+            values=(
                 row["id"],
                 display_type,
                 row["amount"],
-                row["date"],
+                row["date"] if isinstance(row["date"], str) else row["date"].strftime("%Y-%m-%d"),
                 row["category"],
                 row["description"]))
 
