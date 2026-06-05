@@ -228,6 +228,17 @@ class MainPage(Frame):
         logout_button = Button(self, text="Έξοδος", command=lambda: self.app.show_frame(WelcomeFrame))
         logout_button.pack(pady=20) 
 
+        tips_title = Label(self, text="Χρήσιμες υπενθυμίσεις", font=("Arial", 11, "bold"))
+        tips_title.pack(pady=(10, 5))
+
+        tips_label = Label(self,text=(
+        "- Μην αφήνετε τις εκκρεμείς πληρωμές να συσσωρεύονται.\n"
+        "- Αν παρατηρείτε ότι τα έξοδα έχουν ξεφύγει, ελέγξτε άμεσα τα στατιστικά σας.\n"
+        "- Οι σωστές κατηγορίες βοηθούν να δείτε καθαρά πού ξοδεύετε περισσότερο.\n"
+        "- Καταχωρείτε κάθε νέα εγγραφή την ίδια ημέρα για καλύτερη παρακολούθηση.\n"
+        "- Κρατήστε backup των δεδομένων σας μέσω εξαγωγής σε Excel."),justify=LEFT,anchor="w")
+        tips_label.pack(pady=(0, 10), padx=20)
+
 #Δημιουργία νέας εγγραφής
 class NewEntry(Frame):
     def __init__(self,parent,app):
